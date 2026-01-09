@@ -12,6 +12,11 @@ Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+// Frontend dashboard route (Blade view from the converted React pages)
+Route::view('app/dashboard', 'frontend.analysis')
+    ->middleware(['auth', 'verified'])
+    ->name('app.dashboard');
+
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
