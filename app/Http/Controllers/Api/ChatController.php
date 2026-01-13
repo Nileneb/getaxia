@@ -96,62 +96,63 @@ class ChatController extends Controller
             throw new \Exception('Langdock API credentials not configured');
         }
 
-        return new StreamedResponse(function () use ($session, $message, $webhookUrl) {
+        return new StreamedResponse(function () use ($session, $message, $apiKey, $baseUrl, $model) {
             try {
-                // Build POST payload - same structure as other AI tasks
-                $payload = [
-                    'task' => 'chat',
-                    'system_message' => 'You are a helpful AI assistant for startup founders. Provide concise, actionable advice.',
-                    'user_prompt' => $message,
-                    'temperature' => 0.7,
-                    'session_id' => $session->session_id,
-                    'user_id' => $session->user_id,
-                    'company_id' => $session->meta['company_id'] ?? null,
-                    'mode' => $session->mode,
+                // Build OpenAI-compatible messages
+                $systemMessage = 'You are a helpful AI assistant for startup founders. Provide concise, actionable advice.';
+
+                $messages = [
+                    [
+                        'role' => 'system',
+                        'content' => $systemMessage,
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $message,
+                    ],
                 ];
 
-                Log::channel('stack')->info('Calling n8n ai-analysis webhook for chat', [
+                Log::channel('stack')->info('Calling Langdock API for chat', [
                     'user_id' => $session->user_id,
                     'session_id' => $session->session_id,
-                    'url' => $webhookUrl,
+                    'model' => $model,
                 ]);
 
+                // Non-streaming request first (as per requirement)
                 $response = Http::timeout(120)
                     ->withHeaders([
-                        'Accept' => 'application/json',
+                        'Authorization' => "Bearer {$apiKey}",
                         'Content-Type' => 'application/json',
                     ])
-                    ->post($webhookUrl, $payload);
+                    ->post("{$baseUrl}/chat/completions", [
+                        'model' => $model,
+                        'messages' => $messages,
+                        'temperature' => 0.7,
+                        'max_tokens' => 2000,
+                    ]);
 
-                $body = $response->body();
-                
-                Log::channel('stack')->info('Chat response received', [
+                Log::channel('stack')->info('Chat response received from Langdock', [
                     'user_id' => $session->user_id,
                     'session_id' => $session->session_id,
                     'status' => $response->status(),
-                    'response_preview' => substr($body, 0, 200),
                 ]);
 
-                // Parse n8n response (standard ai-analysis format)
+                // Parse OpenAI-compatible response
                 if ($response->successful()) {
                     $data = $response->json();
-                    
-                    // Expected format: {success: true, data: "response text", tokens_used: 123}
-                    if (isset($data['success']) && $data['success']) {
-                        echo "data: " . json_encode([
-                            'type' => 'message',
-                            'sessionId' => $session->session_id,
-                            'content' => $data['data'] ?? '',
-                            'tokens' => $data['tokens_used'] ?? null,
-                        ]) . "\n\n";
-                    } else {
-                        echo "data: " . json_encode([
-                            'type' => 'error',
-                            'error' => $data['error'] ?? 'Unknown error from AI service',
-                        ]) . "\n\n";
-                    }
+
+                    // Extract content from OpenAI format
+                    $content = $data['choices'][0]['message']['content'] ?? '';
+                    $tokensUsed = $data['usage']['total_tokens'] ?? null;
+
+                    echo "data: " . json_encode([
+                        'type' => 'message',
+                        'sessionId' => $session->session_id,
+                        'content' => $content,
+                        'tokens' => $tokensUsed,
+                    ]) . "\n\n";
                 } else {
-                    throw new \Exception('Webhook returned status ' . $response->status());
+                    throw new \Exception('Langdock API returned status ' . $response->status());
                 }
 
                 flush();
