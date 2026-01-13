@@ -19,9 +19,9 @@ use Illuminate\Support\Facades\Log;
  */
 class WebhookAiService
 {
-    protected string $apiKey;
-    protected string $baseUrl;
-    protected string $model;
+    protected ?string $apiKey;
+    protected ?string $baseUrl;
+    protected ?string $model;
     protected ?\App\Models\User $user;
 
     public function __construct(?\App\Models\User $user = null)
@@ -34,7 +34,7 @@ class WebhookAiService
         $this->model = config('services.langdock.model');
 
         if (empty($this->apiKey) || empty($this->baseUrl)) {
-            throw new \Exception('Langdock API credentials not configured in config/services.php');
+            throw new \Exception('Langdock API credentials not configured');
         }
     }
 

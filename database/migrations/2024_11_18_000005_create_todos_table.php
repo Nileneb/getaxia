@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('normalized_title');
             $table->string('owner')->nullable();
             $table->date('due_date')->nullable();
-            $table->enum('source', ['paste', 'csv'])->default('paste');
+            $table->enum('source', ['paste', 'csv', 'api', 'api_batch'])->default('paste');
             $table->integer('position')->default(0);
             $table->timestamps();
         });

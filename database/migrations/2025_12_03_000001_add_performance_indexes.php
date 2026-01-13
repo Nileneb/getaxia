@@ -44,11 +44,6 @@ return new class extends Migration
             $table->index('run_id');
         });
 
-        Schema::table('webhook_presets', function (Blueprint $table) {
-            // user_id is a foreign key, adding explicit index
-            $table->index('user_id');
-        });
-
         Schema::table('goal_kpis', function (Blueprint $table) {
             // Both are foreign keys, adding explicit indexes
             $table->index('company_id');
@@ -90,10 +85,6 @@ return new class extends Migration
 
         Schema::table('missing_todos', function (Blueprint $table) {
             $table->dropIndex(['run_id']);
-        });
-
-        Schema::table('webhook_presets', function (Blueprint $table) {
-            $table->dropIndex(['user_id']);
         });
 
         Schema::table('goal_kpis', function (Blueprint $table) {

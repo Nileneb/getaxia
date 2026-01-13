@@ -39,7 +39,9 @@ new class extends Component {
             ],
         ]);
 
-        $user->fill($validated);
+        // Set name via mutator (splits into first_name/last_name)
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

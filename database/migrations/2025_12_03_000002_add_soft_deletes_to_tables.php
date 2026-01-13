@@ -31,10 +31,6 @@ return new class extends Migration
             $table->softDeletes();
         });
 
-        Schema::table('webhook_presets', function (Blueprint $table) {
-            $table->softDeletes();
-        });
-
         Schema::table('agent_sessions', function (Blueprint $table) {
             $table->softDeletes();
         });
@@ -62,10 +58,6 @@ return new class extends Migration
         });
 
         Schema::table('missing_todos', function (Blueprint $table) {
-            $table->dropSoftDeletes();
-        });
-
-        Schema::table('webhook_presets', function (Blueprint $table) {
             $table->dropSoftDeletes();
         });
 

@@ -91,6 +91,14 @@ class Company extends Model
      */
     public function getTopKpiAttribute()
     {
+        return $this->topKpi();
+    }
+
+    /**
+     * Get the top KPI for the company (method version).
+     */
+    public function topKpi()
+    {
         return GoalKpi::where(function($query) {
             $query->whereHas('goal', function($q) {
                 $q->where('company_id', $this->id);

@@ -65,6 +65,24 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's name (alias for full_name for compatibility)
+     */
+    public function getNameAttribute(): ?string
+    {
+        return $this->full_name ?: null;
+    }
+
+    /**
+     * Set the user's name by splitting into first_name and last_name
+     */
+    public function setNameAttribute(string $value): void
+    {
+        $parts = explode(' ', trim($value), 2);
+        $this->attributes['first_name'] = $parts[0] ?? '';
+        $this->attributes['last_name'] = $parts[1] ?? '';
+    }
+
+    /**
      * Get the user's initials
      */
     public function initials(): string
@@ -106,19 +124,17 @@ class User extends Authenticatable
     }
 
     /**
-     * Get all runs for the user's company's goals.
+     * Get all runs for the user's company.
      */
     public function runs(): HasManyThrough
     {
         return $this->hasManyThrough(
             Run::class,
-            Goal::class,
-            'company_id', // Foreign key on goals table
-            'goal_id',    // Foreign key on runs table
-            'id',         // Local key on users table (but we go through company)
-            'id'          // Local key on goals table
-        )->whereHas('goal.company', function ($query) {
-            $query->where('owner_user_id', $this->id);
-        });
+            Company::class,
+            'owner_user_id', // Foreign key on companies table
+            'company_id',    // Foreign key on runs table
+            'id',            // Local key on users table
+            'id'             // Local key on companies table
+        );
     }
 }
