@@ -2,11 +2,9 @@
 
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\GoalController;
-use App\Http\Controllers\Api\Internal\McpController;
 use App\Http\Controllers\Api\RunController;
 use App\Http\Controllers\Api\TodoController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CompanyProfileController;
 
@@ -21,7 +19,7 @@ use App\Http\Controllers\CompanyProfileController;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth')->group(function () {
 
     // User & Company
     Route::prefix('user')->group(function () {
@@ -62,29 +60,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/message', [ChatController::class, 'message']);
         Route::get('/session/{sessionId}', [ChatController::class, 'show']);
     });
-
-    // Webhooks (for n8n to trigger)
-    Route::prefix('webhooks')->group(function () {
-        Route::post('/run-completed', [WebhookController::class, 'runCompleted']);
-        Route::post('/goal-achieved', [WebhookController::class, 'goalAchieved']);
-    });
 });
 
-    // Company Profiles API
-    Route::prefix('companies/{companyId}')->group(function () {
-        Route::post('profiles', [CompanyProfileController::class, 'store']);
-        Route::get('profiles', [CompanyProfileController::class, 'index']);
-        Route::get('profile-data', [CompanyProfileController::class, 'prioritized']);
-    });
-
-// Public webhook endpoint (with signature verification)
-Route::post('/webhooks/n8n/incoming', [WebhookController::class, 'incomingWebhook']);
-
-// Internal MCP API (protected by shared secret)
-Route::prefix('internal/mcp')->middleware('verify.mcp.secret')->group(function () {
-    Route::get('/health', [McpController::class, 'health']);
-    Route::post('/context', [McpController::class, 'getContext']);
-    Route::post('/emails', [McpController::class, 'getEmails']);
-    Route::post('/todos/create', [McpController::class, 'createTodos']);
-    Route::post('/goals/update', [McpController::class, 'updateGoal']);
+// Company Profiles API
+Route::prefix('companies/{companyId}')->group(function () {
+    Route::post('profiles', [CompanyProfileController::class, 'store']);
+    Route::get('profiles', [CompanyProfileController::class, 'index']);
+    Route::get('profile-data', [CompanyProfileController::class, 'prioritized']);
 });

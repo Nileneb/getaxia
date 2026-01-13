@@ -12,12 +12,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable, HasApiTokens;
+    use HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
     /**
      * The attributes that are mass assignable.
      *
@@ -29,9 +28,6 @@ class User extends Authenticatable
         'email',
         'password',
         'is_guest',
-        'n8n_webhook_url',
-        'chart_webhook_url',
-        'webhook_config',
     ];
 
     /**
@@ -57,16 +53,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_guest' => 'boolean',
-            'webhook_config' => 'array',
         ];
-    }
-
-    /**
-     * Get the n8n webhook URL for this user (falls back to global config)
-     */
-    public function getN8nWebhookUrlAttribute($value): string
-    {
-        return $value ?? config('services.n8n.ai_analysis_webhook_url', 'https://n8n.getaxia.de/webhook/d2336f92-eb51-4b66-b92d-c9e7d9cf4b7d');
     }
 
     /**
@@ -75,14 +62,6 @@ class User extends Authenticatable
     public function getFullNameAttribute(): string
     {
         return trim("{$this->first_name} {$this->last_name}");
-    }
-
-    /**
-     * Get the user's webhook presets
-     */
-    public function webhookPresets()
-    {
-        return $this->hasMany(WebhookPreset::class);
     }
 
     /**

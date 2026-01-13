@@ -43,8 +43,6 @@ class RegisterController extends Controller
                     'last_name' => 'User',
                     'is_guest' => true,
                     'password' => Hash::make('guest-not-allowed-to-login'),
-                    'n8n_webhook_url' => 'https://n8n.getaxia.de/webhook/d2336f92-eb51-4b66-b92d-c9e7d9cf4b7d',
-                    'chart_webhook_url' => 'https://n8n.getaxia.de/webhook/c3352634-be98-4448-903a-d04ed64ea90b',
                 ]
             );
             
