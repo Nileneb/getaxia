@@ -14,25 +14,27 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * WebhookAiService - Routes all AI requests through n8n webhook
- * Replaces direct OpenAI API calls with webhook-based architecture
+ * WebhookAiService - Routes all AI requests through Langdock API
+ * Replaces n8n webhook-based architecture with direct OpenAI-compatible Langdock API
  */
 class WebhookAiService
 {
-    protected string $webhookUrl;
+    protected string $apiKey;
+    protected string $baseUrl;
+    protected string $model;
     protected ?\App\Models\User $user;
 
     public function __construct(?\App\Models\User $user = null)
     {
         $this->user = $user ?? auth()->user();
 
-        // Get webhook URL from user or fall back to config
-        $this->webhookUrl = $this->user?->n8n_webhook_url
-            ?? config('services.n8n.ai_analysis_webhook_url')
-            ?? 'https://n8n.getaxia.de/webhook/d2336f92-eb51-4b66-b92d-c9e7d9cf4b7d';
+        // Get Langdock configuration from config/services.php
+        $this->apiKey = config('services.langdock.api_key');
+        $this->baseUrl = config('services.langdock.base_url');
+        $this->model = config('services.langdock.model');
 
-        if (empty($this->webhookUrl)) {
-            throw new \Exception('AI analysis webhook URL not configured for user');
+        if (empty($this->apiKey) || empty($this->baseUrl)) {
+            throw new \Exception('Langdock API credentials not configured in config/services.php');
         }
     }
 
@@ -184,121 +186,96 @@ class WebhookAiService
     }
 
     /**
-     * Call n8n webhook for AI processing
+     * Call Langdock API (OpenAI-compatible) for AI processing
      */
     protected function callWebhook(array $payload): array
     {
         try {
-            Log::info('WebhookAiService: Calling webhook', [
-                'url' => $this->webhookUrl,
+            Log::info('WebhookAiService: Calling Langdock API', [
                 'task' => $payload['task'] ?? 'unknown',
+                'model' => $this->model,
             ]);
 
-            // Send as POST JSON - n8n will have data in $json
+            // Build OpenAI-compatible messages format
+            $messages = [
+                [
+                    'role' => 'system',
+                    'content' => $payload['system_message'] ?? 'You are a helpful assistant.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $payload['user_prompt'] ?? '',
+                ],
+            ];
+
+            // Call Langdock API with OpenAI-compatible endpoint
             $response = Http::timeout(120)
-                ->withHeaders(['Content-Type' => 'application/json'])
-                ->post($this->webhookUrl, $payload);
+                ->withHeaders([
+                    'Authorization' => "Bearer {$this->apiKey}",
+                    'Content-Type' => 'application/json',
+                ])
+                ->post("{$this->baseUrl}/chat/completions", [
+                    'model' => $this->model,
+                    'messages' => $messages,
+                    'temperature' => $payload['temperature'] ?? 0.7,
+                    'max_tokens' => 4000,
+                ]);
 
             if ($response->failed()) {
-                Log::error('WebhookAiService: Webhook call failed', [
+                Log::error('WebhookAiService: Langdock API call failed', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
 
                 return [
                     'success' => false,
-                    'error' => 'Webhook returned status ' . $response->status() . ': ' . $response->body(),
+                    'error' => 'Langdock API returned status ' . $response->status() . ': ' . $response->body(),
                 ];
             }
 
-            $body = $response->body();
-            $contentType = $response->header('Content-Type');
-
-            Log::info('WebhookAiService: Raw response', [
-                'status' => $response->status(),
-                'body_length' => strlen($body),
-                'body_full' => $body, // Log entire body temporarily
-                'content_type' => $contentType,
-            ]);
-
-            // Check if response is Server-Sent Events (SSE) stream
-            if (str_contains($contentType, 'application/json') && str_contains($body, '{"type":"item"')) {
-                // n8n is streaming - parse SSE events and collect content
-                $content = '';
-                $lines = explode("\n", $body);
-
-                foreach ($lines as $line) {
-                    $line = trim($line);
-                    if (empty($line)) continue;
-
-                    $event = json_decode($line, true);
-                    if ($event && isset($event['type']) && $event['type'] === 'item' && isset($event['content'])) {
-                        $content .= $event['content'];
-                    }
-                }
-
-                Log::info('WebhookAiService: Collected SSE content', [
-                    'content_length' => strlen($content),
-                    'content_preview' => substr($content, 0, 500),
-                    'content_end' => substr($content, -500),
-                ]);
-
-                // Remove format markers like "format_final_json_response"
-                $content = preg_replace('/format_final_json_response/i', '', $content);
-                $content = trim($content);
-
-                // Try to parse as JSON first
-                $parsedContent = json_decode($content, true);
-
-                if (json_last_error() === JSON_ERROR_NONE && is_array($parsedContent)) {
-                    // Content is valid JSON, return as structured data
-                    Log::info('WebhookAiService: Successfully parsed SSE as JSON');
-                    return [
-                        'success' => true,
-                        'data' => $parsedContent,
-                        'tokens_used' => 0,
-                    ];
-                } else {
-                    Log::warning('WebhookAiService: Failed to parse SSE as JSON', [
-                        'json_error' => json_last_error_msg(),
-                        'content_sample' => substr($content, 0, 1000),
-                    ]);
-                }
-
-                // Fallback: Return as text in analysis field
-                return [
-                    'success' => true,
-                    'data' => ['analysis' => $content],
-                    'tokens_used' => 0,
-                ];
-            }
-
-            // Try parsing as regular JSON
             $data = $response->json();
 
-            // n8n returns nested structure: {action: "parse", response: {output: {success, data, tokens_used}}}
-            // Extract the actual response from n8n's wrapper
-            if (isset($data['response']['output'])) {
-                $data = $data['response']['output'];
-            } elseif (isset($data['output'])) {
-                $data = $data['output'];
-            }
+            Log::info('WebhookAiService: Langdock API response received', [
+                'status' => $response->status(),
+                'usage' => $data['usage'] ?? null,
+            ]);
 
-            // Expected response format: {success: true, data: {...}, tokens_used: 123}
-            // or {success: false, error: "..."}
-            if (!isset($data['success'])) {
-                Log::error('WebhookAiService: Invalid webhook response format', ['response' => $data]);
+            // Parse the content from the OpenAI-compatible response
+            if (!isset($data['choices'][0]['message']['content'])) {
+                Log::error('WebhookAiService: Invalid Langdock response format', ['response' => $data]);
 
                 return [
                     'success' => false,
-                    'error' => 'Invalid webhook response format',
+                    'error' => 'Invalid Langdock API response format',
                 ];
             }
 
-            return $data;
+            $content = $data['choices'][0]['message']['content'];
+            $tokensUsed = $data['usage']['total_tokens'] ?? 0;
+
+            // Try to parse content as JSON (expected for structured responses)
+            $parsedContent = json_decode($content, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($parsedContent)) {
+                // Content is valid JSON, return as structured data
+                Log::info('WebhookAiService: Successfully parsed response as JSON');
+                return [
+                    'success' => true,
+                    'data' => $parsedContent,
+                    'tokens_used' => $tokensUsed,
+                ];
+            }
+
+            // Fallback: Return as text in analysis field
+            Log::info('WebhookAiService: Returning response as text analysis');
+            return [
+                'success' => true,
+                'data' => ['analysis' => $content],
+                'tokens_used' => $tokensUsed,
+            ];
 
         } catch (\Exception $e) {
-            Log::error('WebhookAiService: Exception during webhook call', [
+            Log::error('WebhookAiService: Exception during Langdock API call', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -530,69 +507,90 @@ class WebhookAiService
     }
 
     /**
-     * Send a chat message to the webhook and get AI response
+     * Send a chat message via Langdock API and get AI response
      */
-    public function sendChatMessage(string $webhookUrl, string $message, ?Company $company = null): array
+    public function sendChatMessage(string $message, ?Company $company = null): array
     {
         $startTime = microtime(true);
 
         // Build context from company data
-        $context = '';
+        $systemPrompt = "You are a helpful AI assistant.";
         if ($company) {
-            $context .= "Company: {$company->name}\n";
+            $systemPrompt = "You are a helpful AI assistant assisting with strategic planning for {$company->name}.";
             if ($company->business_model) {
-                $context .= "Business Model: {$company->business_model}\n";
+                $systemPrompt .= " The company operates in the {$company->business_model} business model.";
             }
+        }
 
-            // Add goals
+        // Build user message with context
+        $userMessage = $message;
+        if ($company) {
             $goals = $company->goals()->where('is_active', true)->get();
             if ($goals->isNotEmpty()) {
-                $context .= "\nActive Goals:\n";
+                $userMessage .= "\n\nActive Goals:\n";
                 foreach ($goals as $goal) {
-                    $context .= "- {$goal->title}\n";
+                    $userMessage .= "- {$goal->title}\n";
                 }
             }
         }
 
-        $payload = [
-            'action' => 'chat',
-            'message' => $message,
-            'context' => $context,
-            'timestamp' => now()->toIso8601String(),
-        ];
-
         try {
-            $response = Http::timeout(60)->post($webhookUrl, $payload);
+            $response = Http::timeout(60)
+                ->withHeaders([
+                    'Authorization' => "Bearer {$this->apiKey}",
+                    'Content-Type' => 'application/json',
+                ])
+                ->post("{$this->baseUrl}/chat/completions", [
+                    'model' => $this->model,
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => $systemPrompt,
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $userMessage,
+                        ],
+                    ],
+                    'temperature' => 0.7,
+                    'max_tokens' => 2000,
+                ]);
 
             if (!$response->successful()) {
-                throw new \Exception("Webhook returned status {$response->status()}");
+                throw new \Exception("Langdock API returned status {$response->status()}: {$response->body()}");
             }
 
             $data = $response->json();
             $duration = round((microtime(true) - $startTime) * 1000, 2);
+
+            // Extract message from OpenAI-compatible response
+            $aiMessage = $data['choices'][0]['message']['content'] ?? 'No response from AI';
+            $tokensUsed = $data['usage']['total_tokens'] ?? null;
 
             // Log the interaction
             AiLog::create([
                 'run_id' => null,
                 'prompt_type' => 'chat',
                 'prompt_version' => 'v1.0',
-                'request_payload' => $payload,
+                'request_payload' => [
+                    'message' => $message,
+                    'company_id' => $company?->id,
+                ],
                 'response_payload' => $data,
-                'tokens_used' => $data['usage']['total_tokens'] ?? null,
+                'tokens_used' => $tokensUsed,
                 'response_time_ms' => $duration,
                 'status' => 'success',
             ]);
 
             return [
-                'message' => $data['message'] ?? $data['response'] ?? 'No response from AI',
+                'message' => $aiMessage,
                 'usage' => $data['usage'] ?? null,
             ];
 
         } catch (\Exception $e) {
-            Log::error('Chat webhook failed', [
+            Log::error('Chat API call failed', [
                 'error' => $e->getMessage(),
-                'webhook_url' => $webhookUrl,
-                'payload' => $payload,
+                'model' => $this->model,
             ]);
 
             throw new \Exception('Failed to send chat message: ' . $e->getMessage());

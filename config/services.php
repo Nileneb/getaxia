@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'langdock' => [
+        'api_key' => env('LANGDOCK_API_KEY'),
+        'base_url' => env('LANGDOCK_BASE_URL', 'https://api.langdock.com/api/v1'),
+        'model' => env('LANGDOCK_MODEL', 'gpt-5'),
+    ],
+
 ];

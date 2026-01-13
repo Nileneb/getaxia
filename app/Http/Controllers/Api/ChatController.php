@@ -83,15 +83,18 @@ class ChatController extends Controller
     }
 
     /**
-     * Stream response from n8n webhook.
+     * Stream response from Langdock API (OpenAI-compatible).
      */
     private function streamChatResponse(AgentSession $session, string $message): StreamedResponse
     {
-        // Get webhook URL from user
-        $user = \App\Models\User::find($session->user_id);
-        $webhookUrl = $user?->n8n_webhook_url 
-            ?? config('services.n8n.ai_analysis_webhook_url')
-            ?? 'https://n8n.getaxia.de/webhook/d2336f92-eb51-4b66-b92d-c9e7d9cf4b7d';
+        // Get Langdock configuration from config/services.php
+        $apiKey = config('services.langdock.api_key');
+        $baseUrl = config('services.langdock.base_url');
+        $model = config('services.langdock.model');
+
+        if (empty($apiKey) || empty($baseUrl)) {
+            throw new \Exception('Langdock API credentials not configured');
+        }
 
         return new StreamedResponse(function () use ($session, $message, $webhookUrl) {
             try {
