@@ -45,12 +45,12 @@ class RegisterController extends Controller
                     'password' => Hash::make('guest-not-allowed-to-login'),
                 ]
             );
-            
+
             // Reset guest user data (delete old company, goals, runs)
             if ($user->company) {
                 $user->company->delete();
             }
-            
+
             // Create fresh company for guest
             Company::create([
                 'owner_user_id' => $user->id,
