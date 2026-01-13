@@ -82,7 +82,15 @@ services:
       dockerfile: ./docker/common/php-fpm/Dockerfile
       target: production
     restart: unless-stopped
-    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    command:
+      [
+        "php",
+        "artisan",
+        "queue:work",
+        "--sleep=3",
+        "--tries=3",
+        "--max-time=3600",
+      ]
     volumes:
       - laravel-storage-production:/var/www/storage
     env_file:

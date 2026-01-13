@@ -12,7 +12,7 @@ echo "Database is ready!"
 if [ "$APP_ENV" = "production" ] || [ "$APP_ENV" = "staging" ]; then
     echo "Running database migrations..."
     php artisan migrate --force
-    
+
     # Only seed SystemPrompts (required for AI functionality)
     echo "Seeding SystemPrompts..."
     php artisan db:seed --class=SystemPromptsSeeder --force
