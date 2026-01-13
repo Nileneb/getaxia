@@ -16,7 +16,7 @@ beforeEach(function () {
         'services.langdock.base_url' => 'https://api.langdock.test/v1',
         'services.langdock.model' => 'gpt-4o',
     ]);
-    
+
     // Create required SystemPrompt
     SystemPrompt::create([
         'type' => 'todo_analysis',
@@ -182,7 +182,7 @@ test('langdock service throws exception on api error', function () {
     $todo = Todo::create(['run_id' => $run->id, 'raw_input' => 'Test', 'normalized_title' => 'Test']);
 
     $service = new WebhookAiService($user);
-    
+
     expect(fn () => $service->analyzeTodos($run, collect([$todo]), $company))
         ->toThrow(\Exception::class);
 });
@@ -198,7 +198,7 @@ test('langdock service throws exception on 5xx error', function () {
     $todo = Todo::create(['run_id' => $run->id, 'raw_input' => 'Test', 'normalized_title' => 'Test']);
 
     $service = new WebhookAiService($user);
-    
+
     expect(fn () => $service->analyzeTodos($run, collect([$todo]), $company))
         ->toThrow(\Exception::class);
 });
@@ -216,16 +216,16 @@ test('langdock service handles invalid response format', function () {
     $todo = Todo::create(['run_id' => $run->id, 'raw_input' => 'Test', 'normalized_title' => 'Test']);
 
     $service = new WebhookAiService($user);
-    
+
     expect(fn () => $service->analyzeTodos($run, collect([$todo]), $company))
         ->toThrow(\Exception::class);
 });
 
 test('langdock service requires api key configuration', function () {
     config(['services.langdock.api_key' => null]);
-    
+
     $user = User::factory()->create();
-    
+
     expect(fn () => new WebhookAiService($user))
         ->toThrow(\Exception::class, 'Langdock API credentials not configured');
 });

@@ -17,7 +17,7 @@ beforeEach(function () {
         'services.langdock.base_url' => 'https://api.langdock.test/v1',
         'services.langdock.model' => 'gpt-4o',
     ]);
-    
+
     // Create required SystemPrompt
     SystemPrompt::create([
         'type' => 'todo_analysis',
@@ -86,24 +86,24 @@ test('todo creation triggers AI analysis', function () {
     ]);
 
     $response->assertStatus(201);
-    
+
     // Check that Run was created
     expect(Run::count())->toBe(1);
     $run = Run::first();
     expect($run->user_id)->toBe($user->id)
         ->and($run->overall_score)->toBe(75);
-    
+
     // Check that Todos were created
     expect(Todo::count())->toBe(2);
-    
+
     // Check that Evaluations were created
     expect(TodoEvaluation::count())->toBe(2);
-    
+
     $greenEval = TodoEvaluation::where('color', 'green')->first();
     expect($greenEval)->not->toBeNull()
         ->and($greenEval->score)->toBe(85)
         ->and($greenEval->reasoning)->toBe('High impact on MRR');
-    
+
     // Check that MissingTodos were created
     expect(MissingTodo::count())->toBe(1);
     $missing = MissingTodo::first();
@@ -128,7 +128,7 @@ test('todo creation stores todos even if AI fails', function () {
 
     // Should return error
     $response->assertStatus(500);
-    
+
     // Todos should NOT be persisted due to transaction rollback
     expect(Todo::count())->toBe(0);
 });
@@ -185,7 +185,7 @@ test('todo creation links evaluations to matching goals', function () {
         'owner_user_id' => $user->id,
         'name' => 'Test Company',
     ]);
-    
+
     $goal = Goal::create([
         'company_id' => $company->id,
         'title' => 'Increase MRR',
@@ -197,7 +197,7 @@ test('todo creation links evaluations to matching goals', function () {
     ]);
 
     $response->assertStatus(201);
-    
+
     $evaluation = TodoEvaluation::first();
     expect($evaluation->primary_goal_id)->toBe($goal->id);
 });
@@ -218,7 +218,7 @@ test('batch todo creation works without AI analysis', function () {
 
     $response->assertStatus(201);
     expect(Todo::count())->toBe(3);
-    
+
     // No AI analysis = no evaluations
     expect(TodoEvaluation::count())->toBe(0);
 });

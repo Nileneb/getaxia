@@ -19,7 +19,7 @@ test('new users can register with first_name and last_name', function () {
     ]);
 
     $response->assertSessionHasNoErrors();
-    
+
     // Fortify redirects to dashboard after registration
     $response->assertRedirect(route('dashboard', absolute: false));
 
@@ -53,7 +53,7 @@ test('registration creates company for new user', function () {
     ]);
 
     $user = User::where('email', 'max@example.com')->first();
-    
+
     expect($user->company)->not->toBeNull()
         ->and($user->company->owner_user_id)->toBe($user->id);
 });
