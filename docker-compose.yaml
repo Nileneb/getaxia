@@ -60,12 +60,38 @@ services:
     build:
       context: .
       dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: production
     tty: true # Enables an interactive terminal
     stdin_open: true # Keeps standard input open for 'docker exec'
     env_file:
       - .env
     networks:
       - laravel-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Queue Worker service for processing background jobs
+  # -----------------------------------------------------------
+  # Runs php artisan queue:work to process jobs from the database queue.
+  # Essential for AI analysis tasks and other async operations.
+  # -----------------------------------------------------------
+  queue-worker:
+    build:
+      context: .
+      dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: production
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    volumes:
+      - laravel-storage-production:/var/www/storage
+    env_file:
+      - .env
+    networks:
+      - laravel-production
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:16

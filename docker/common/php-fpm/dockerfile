@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     libicu-dev \
     libzip-dev \
+    nodejs \
+    npm \
     && docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     pdo_pgsql \
@@ -36,6 +38,9 @@ COPY . /var/www
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
 
+# Build frontend assets (Vite production build)
+RUN npm ci && npm run build
+
 # Stage 2: Production environment
 FROM php:8.4-fpm AS production
 
@@ -57,6 +62,9 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 # Copy the application code and dependencies from the build stage
 COPY --from=builder /var/www /var/www
 
+# Copy built frontend assets
+COPY --from=builder /var/www/public/build /var/www/public/build
+
 # Set working directory
 WORKDIR /var/www
 
@@ -64,7 +72,7 @@ WORKDIR /var/www
 RUN chown -R www-data:www-data /var/www
 
 # Entrypoint-Skript kopieren und ausführbar machen
-COPY ./docker/development/php-fpm/entrypoint.sh /entrypoint.sh
+COPY ./docker/common/php-fpm/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Switch to the non-privileged user to run the application
