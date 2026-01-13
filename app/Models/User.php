@@ -3,26 +3,35 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
-
+    use HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable, HasApiTokens;
     /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
+        'is_guest',
+        'n8n_webhook_url',
+        'chart_webhook_url',
+        'webhook_config',
     ];
 
     /**
@@ -47,7 +56,33 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_guest' => 'boolean',
+            'webhook_config' => 'array',
         ];
+    }
+
+    /**
+     * Get the n8n webhook URL for this user (falls back to global config)
+     */
+    public function getN8nWebhookUrlAttribute($value): string
+    {
+        return $value ?? config('services.n8n.ai_analysis_webhook_url', 'https://n8n.getaxia.de/webhook/d2336f92-eb51-4b66-b92d-c9e7d9cf4b7d');
+    }
+
+    /**
+     * Get the user's full name
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim("{$this->first_name} {$this->last_name}");
+    }
+
+    /**
+     * Get the user's webhook presets
+     */
+    public function webhookPresets()
+    {
+        return $this->hasMany(WebhookPreset::class);
     }
 
     /**
@@ -55,10 +90,56 @@ class User extends Authenticatable
      */
     public function initials(): string
     {
-        return Str::of($this->name)
+        $name = $this->full_name ?: $this->email;
+        return Str::of($name)
             ->explode(' ')
             ->take(2)
             ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
+    }
+
+    /**
+     * Get the company owned by the user.
+     */
+    public function company(): HasOne
+    {
+        return $this->hasOne(Company::class, 'owner_user_id');
+    }
+
+    /**
+     * Get all goals for the user (through their company).
+     */
+    public function aiMetadata(): MorphMany
+    {
+        return $this->morphMany(AiExtractedMetadata::class, 'entity', 'entity_type', 'entity_id');
+    }
+
+    public function goals()
+    {
+        return $this->hasManyThrough(
+            Goal::class,
+            Company::class,
+            'owner_user_id', // Foreign key on companies table
+            'company_id',    // Foreign key on goals table
+            'id',           // Local key on users table
+            'id'            // Local key on companies table
+        );
+    }
+
+    /**
+     * Get all runs for the user's company's goals.
+     */
+    public function runs(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Run::class,
+            Goal::class,
+            'company_id', // Foreign key on goals table
+            'goal_id',    // Foreign key on runs table
+            'id',         // Local key on users table (but we go through company)
+            'id'          // Local key on goals table
+        )->whereHas('goal.company', function ($query) {
+            $query->where('owner_user_id', $this->id);
+        });
     }
 }
