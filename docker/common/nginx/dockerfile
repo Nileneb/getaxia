@@ -1,0 +1,40 @@
+# docker/nginx/Dockerfile
+
+# Stage 1: PHP + Composer (build vendor)
+FROM php:8.4-cli AS php_vendor
+WORKDIR /var/www
+COPY . /var/www
+# Entferne unnötige Dateien aus dem Build-Kontext
+RUN rm -rf /var/www/tests /var/www/.git /var/www/.github /var/www/.gitignore /var/www/.dockerignore /var/www/node_modules /var/www/.env* || true
+RUN apt-get update && apt-get install -y unzip git curl && \
+	curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
+	composer install --no-dev --optimize-autoloader
+
+# Stage 2: Node.js (npm build)
+FROM node:24-alpine AS node_build
+WORKDIR /var/www
+# Kopiere nur relevante Dateien für den Build
+COPY package.json vite.config.js /var/www/
+COPY resources/ /var/www/resources/
+COPY public/ /var/www/public/
+COPY composer.json composer.lock /var/www/
+COPY artisan /var/www/
+COPY bootstrap/ /var/www/bootstrap/
+COPY config/ /var/www/config/
+COPY routes/ /var/www/routes/
+COPY app/ /var/www/app/
+# Copy vendor from PHP stage
+COPY --from=php_vendor /var/www/vendor /var/www/vendor
+# Node dependencies & build
+RUN npm install || { echo "npm install failed"; exit 1; }
+RUN npm run build || { echo "npm run build failed"; exit 1; }
+
+# Stage 3: Nginx production image
+FROM nginx:alpine
+# Custom Nginx config
+COPY ./docker/common/nginx/nginx.conf /etc/nginx/nginx.conf
+# Copy built assets
+COPY --from=node_build /var/www/public /var/www/public
+WORKDIR /var/www/public
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

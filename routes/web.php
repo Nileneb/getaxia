@@ -8,6 +8,11 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+// Onboarding route (redirected to after registration)
+Route::view('onboarding', 'axia')
+    ->middleware(['auth'])
+    ->name('onboarding');
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

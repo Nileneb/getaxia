@@ -62,13 +62,13 @@ class TodoController extends Controller
 
             // Store results (same logic as Home.php)
             $run->update([
-                'overall_score' => $result['overall_score'] ?? null,
-                'summary_text' => $result['summary_text'] ?? null,
+                'overall_score' => $analysisResults['overall_score'] ?? null,
+                'summary_text' => $analysisResults['summary_text'] ?? null,
             ]);
 
             // Store evaluations
-            if (isset($result['evaluations'])) {
-                foreach ($result['evaluations'] as $evaluation) {
+            if (isset($analysisResults['evaluations'])) {
+                foreach ($analysisResults['evaluations'] as $evaluation) {
                     $todo = $todos[$evaluation['task_index']] ?? null;
                     if (!$todo) continue;
 
@@ -99,8 +99,8 @@ class TodoController extends Controller
             }
 
             // Store missing todos
-            if (isset($result['missing_todos'])) {
-                foreach ($result['missing_todos'] as $missing) {
+            if (isset($analysisResults['missing_todos'])) {
+                foreach ($analysisResults['missing_todos'] as $missing) {
                     $goal = null;
                     $kpi = null;
                     
