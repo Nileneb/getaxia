@@ -1,1 +1,0 @@
-regex:<env name="APP_KEY" value="base64:N9fp7qkYpggmVCQOUQVrqD5asNWaRUBvfjkX6vcCH8I="><env name="APP_KEY" value="base64:REDACTED"/>
