@@ -5,42 +5,58 @@ use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\RunController;
 use App\Http\Controllers\Api\TodoController;
 use App\Http\Controllers\Api\UserController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CompanyProfileController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
+| All API routes require authentication via Sanctum/session.
+| Routes are organized by resource for clarity.
 |
 */
 
 Route::middleware('auth')->group(function () {
 
-    // User & Company
+    /*
+    |--------------------------------------------------------------------------
+    | User Routes
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('user')->group(function () {
         Route::get('/', [UserController::class, 'show']);
         Route::get('/company', [UserController::class, 'company']);
     });
 
-    // Goals & KPIs
-    Route::prefix('goals')->group(function () {
-        Route::get('/', [GoalController::class, 'index']);
-        Route::post('/', [GoalController::class, 'store']);
-        Route::get('/{goal}', [GoalController::class, 'show']);
-        Route::put('/{goal}', [GoalController::class, 'update']);
-        Route::delete('/{goal}', [GoalController::class, 'destroy']);
-
-        // KPIs for a specific goal
-        Route::get('/{goal}/kpis', [GoalController::class, 'kpis']);
-        Route::post('/{goal}/kpis', [GoalController::class, 'storeKpi']);
+    /*
+    |--------------------------------------------------------------------------
+    | Company & Profile Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('companies/{company}')->group(function () {
+        Route::get('/profiles', [CompanyProfileController::class, 'index']);
+        Route::post('/profiles', [CompanyProfileController::class, 'store']);
+        Route::get('/profile-data', [CompanyProfileController::class, 'prioritized']);
     });
 
-    // Todos & Runs
+    /*
+    |--------------------------------------------------------------------------
+    | Goals & KPIs Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('goals', GoalController::class);
+    Route::prefix('goals/{goal}')->group(function () {
+        Route::get('/kpis', [GoalController::class, 'kpis']);
+        Route::post('/kpis', [GoalController::class, 'storeKpi']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Runs & Analysis Routes
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('runs')->group(function () {
         Route::get('/', [RunController::class, 'index']);
         Route::get('/{run}', [RunController::class, 'show']);
@@ -49,22 +65,24 @@ Route::middleware('auth')->group(function () {
         Route::get('/{run}/missing-todos', [RunController::class, 'missingTodos']);
     });
 
+    /*
+    |--------------------------------------------------------------------------
+    | Todos Routes
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('todos')->group(function () {
         Route::post('/', [TodoController::class, 'store']);
         Route::post('/batch', [TodoController::class, 'storeBatch']);
     });
 
-    // Chat endpoints
+    /*
+    |--------------------------------------------------------------------------
+    | Chat Routes
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('chat')->group(function () {
         Route::post('/start', [ChatController::class, 'start']);
         Route::post('/message', [ChatController::class, 'message']);
         Route::get('/session/{sessionId}', [ChatController::class, 'show']);
     });
-});
-
-// Company Profiles API
-Route::prefix('companies/{companyId}')->group(function () {
-    Route::post('profiles', [CompanyProfileController::class, 'store']);
-    Route::get('profiles', [CompanyProfileController::class, 'index']);
-    Route::get('profile-data', [CompanyProfileController::class, 'prioritized']);
 });
