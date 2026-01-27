@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
     <meta charset="utf-8">
@@ -27,21 +27,18 @@
                 @if (Route::has('login'))
                     <nav class="flex items-center gap-3">
                         @auth
-                            <a href="{{ url('/dashboard') }}"
-                                class="inline-flex items-center px-4 py-2 bg-[var(--accent-pink)] text-white rounded-lg hover:bg-[#B03A6F] transition-colors text-sm font-medium">
+                            <flux:button href="{{ url('/dashboard') }}" variant="primary">
                                 Dashboard
-                            </a>
+                            </flux:button>
                         @else
-                            <a href="{{ route('login') }}"
-                                class="inline-flex items-center px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-sm">
+                            <flux:button href="{{ route('login') }}" variant="ghost">
                                 Log in
-                            </a>
+                            </flux:button>
 
                             @if (Route::has('register'))
-                                <a href="{{ route('register') }}"
-                                    class="inline-flex items-center px-4 py-2 bg-[var(--accent-pink)] text-white rounded-lg hover:bg-[#B03A6F] transition-colors text-sm font-medium">
+                                <flux:button href="{{ route('register') }}" variant="primary">
                                     Get Started
-                                </a>
+                                </flux:button>
                             @endif
                         @endauth
                     </nav>
@@ -132,21 +129,18 @@
                 <!-- Action Buttons -->
                 <div class="flex gap-4 justify-center">
                     @auth
-                        <a href="{{ route('dashboard') }}"
-                            class="px-6 py-3 bg-white text-[var(--bg-primary)] rounded-lg hover:bg-gray-100 transition-colors font-medium">
+                        <flux:button href="{{ route('dashboard') }}" variant="primary">
                             Go to Dashboard
-                        </a>
+                        </flux:button>
                     @else
                         @if (Route::has('register'))
-                            <a href="{{ route('register') }}"
-                                class="px-6 py-3 bg-white text-[var(--bg-primary)] rounded-lg hover:bg-gray-100 transition-colors font-medium">
+                            <flux:button href="{{ route('register') }}" variant="primary">
                                 Start Setup
-                            </a>
+                            </flux:button>
                         @endif
-                        <a href="{{ route('login') }}"
-                            class="px-6 py-3 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition-colors font-medium">
+                        <flux:button href="{{ route('login') }}" variant="outline">
                             Sign In
-                        </a>
+                        </flux:button>
                     @endauth
                 </div>
             </div>

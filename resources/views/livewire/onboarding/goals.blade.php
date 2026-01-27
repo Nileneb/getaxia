@@ -6,9 +6,10 @@ use Livewire\Attributes\Title;
 use App\Models\Goal;
 use App\Models\Company;
 
-#[Layout('components.layouts.app')]
-#[Title('Goals')]
-new class extends Component {
+new
+    #[Layout('components.layouts.app')]
+    #[Title('Goals')]
+    class extends Component {
     public array $goals = [];
 
     public function mount(): void
@@ -78,77 +79,70 @@ new class extends Component {
 }; ?>
 
 <div class="max-w-3xl mx-auto px-6 py-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-2xl font-medium text-[var(--text-primary)] mb-2">Goals for this period</h1>
-            <p class="text-[var(--text-secondary)]">Define your key goals with clear priorities.</p>
-        </div>
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-medium text-[var(--text-primary)] mb-2">Goals for this period</h1>
+        <p class="text-[var(--text-secondary)]">Define your key goals with clear priorities.</p>
+    </div>
 
-        <!-- Add Goal Button (Top) -->
-        <button wire:click="addGoal"
-            class="w-full mb-6 py-4 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border-2 border-dashed border-[var(--border-color)] hover:border-[#E94B8C]/30 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center justify-center gap-2">
-            <flux:icon.plus class="w-5 h-5" />
-            Add Goal
-        </button>
+    <!-- Add Goal Button (Top) -->
+    <flux:button wire:click="addGoal" variant="ghost" icon="plus"
+        class="w-full mb-6 py-4 border-2 border-dashed border-[var(--border-color)] hover:border-[var(--accent-pink)]/30 rounded-2xl">
+        Add Goal
+    </flux:button>
 
-        <!-- Goals List -->
-        <div class="space-y-6">
-            @foreach($goals as $index => $goal)
-                <div class="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-color)] space-y-4">
-                    <!-- Title -->
-                    <div class="relative">
-                        <input type="text" wire:model="goals.{{ $index }}.title" placeholder="Describe your goal"
-                            class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 pr-10 text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#E94B8C]/50" />
-                        <button wire:click="deleteGoal({{ $index }})"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-                            <flux:icon.x-mark class="w-4 h-4" />
-                        </button>
+    <!-- Goals List -->
+    <div class="space-y-6">
+        @foreach($goals as $index => $goal)
+            <div class="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-color)] space-y-4">
+                <!-- Title -->
+                <div class="flex gap-2 items-start">
+                    <div class="flex-1">
+                        <flux:input wire:model="goals.{{ $index }}.title" placeholder="Describe your goal" />
                     </div>
+                    <flux:button wire:click="deleteGoal({{ $index }})" variant="ghost" size="sm" icon="x-mark" />
+                </div>
 
-                    <!-- Description -->
-                    <textarea wire:model="goals.{{ $index }}.description" placeholder="Additional details (optional)"
-                        rows="2"
-                        class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#E94B8C]/50 resize-none"></textarea>
+                <!-- Description -->
+                <flux:textarea wire:model="goals.{{ $index }}.description" placeholder="Additional details (optional)"
+                    rows="2" />
 
-                    <!-- Priority -->
-                    <div>
-                        <label class="block text-sm text-[var(--text-secondary)] mb-2">Priority</label>
-                        <div class="flex gap-3">
-                            @foreach(['high', 'mid', 'low'] as $priority)
-                                            <button type="button" wire:click="updatePriority({{ $index }}, '{{ $priority }}')"
-                                                class="px-6 py-2 rounded-lg border transition-colors {{ $goal['priority'] === $priority
-                                ? ($priority === 'high'
-                                    ? 'bg-[#4CAF50]/10 border-[#4CAF50]/50 text-[#4CAF50]'
-                                    : ($priority === 'mid'
-                                        ? 'bg-[#FFB74D]/10 border-[#FFB74D]/50 text-[#FFB74D]'
-                                        : 'bg-[#FF8A65]/10 border-[#FF8A65]/50 text-[#FF8A65]'))
-                                : 'bg-[var(--bg-tertiary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--border-color)]' }}">
-                                                {{ ucfirst($priority) }}
-                                            </button>
-                            @endforeach
-                        </div>
+                <!-- Priority -->
+                <div>
+                    <flux:label class="mb-2">Priority</flux:label>
+                    <div class="flex gap-3">
+                        @foreach(['high', 'mid', 'low'] as $priority)
+                                    <button type="button" wire:click="updatePriority({{ $index }}, '{{ $priority }}')"
+                                        class="px-6 py-2 rounded-lg border transition-colors {{ $goal['priority'] === $priority
+                            ? ($priority === 'high'
+                                ? 'bg-[var(--color-axia-green)]/10 border-[var(--color-axia-green)]/50 text-[var(--color-axia-green)]'
+                                : ($priority === 'mid'
+                                    ? 'bg-[var(--color-axia-yellow)]/10 border-[var(--color-axia-yellow)]/50 text-[var(--color-axia-yellow)]'
+                                    : 'bg-[var(--color-axia-orange)]/10 border-[var(--color-axia-orange)]/50 text-[var(--color-axia-orange)]'))
+                            : 'bg-[var(--bg-tertiary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--border-color)]' }}">
+                                        {{ ucfirst($priority) }}
+                                    </button>
+                        @endforeach
                     </div>
                 </div>
-            @endforeach
-        </div>
-
-        <!-- Add Goal Button (Bottom) -->
-        @if(count($goals) > 0)
-            <button wire:click="addGoal"
-                class="w-full mt-6 py-4 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border-2 border-dashed border-[var(--border-color)] hover:border-[#E94B8C]/30 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center justify-center gap-2">
-                <flux:icon.plus class="w-5 h-5" />
-                Add Goal
-            </button>
-        @endif
-
-        <!-- Next Button -->
-        @if(count($goals) > 0)
-            <div class="flex justify-end mt-8">
-                <button wire:click="save" wire:loading.attr="disabled"
-                    class="px-8 py-3 bg-[#E94B8C] hover:bg-[#D43F7C] text-white rounded-lg transition-colors disabled:opacity-50">
-                    <span wire:loading.remove>Continue to To-Dos</span>
-                    <span wire:loading>Saving...</span>
-                </button>
             </div>
-        @endif
+        @endforeach
+    </div>
+
+    <!-- Add Goal Button (Bottom) -->
+    @if(count($goals) > 0)
+        <flux:button wire:click="addGoal" variant="ghost" icon="plus"
+            class="w-full mt-6 py-4 border-2 border-dashed border-[var(--border-color)] hover:border-[var(--accent-pink)]/30 rounded-2xl">
+            Add Goal
+        </flux:button>
+    @endif
+
+    <!-- Next Button -->
+    @if(count($goals) > 0)
+        <div class="flex justify-end mt-8">
+            <flux:button wire:click="save" variant="primary">
+                Continue to To-Dos
+            </flux:button>
+        </div>
+    @endif
 </div>

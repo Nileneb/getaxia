@@ -42,10 +42,10 @@ new
     public function getScoreColor(int $score): string
     {
         if ($score >= 70)
-            return '#4CAF50';
+            return 'var(--color-axia-green)';
         if ($score >= 50)
-            return '#FFB74D';
-        return '#FF8A65';
+            return 'var(--color-axia-yellow)';
+        return 'var(--color-axia-orange)';
     }
 
     public function viewAnalysis(string $id): void
@@ -56,11 +56,11 @@ new
 
 <div class="max-w-[1200px] mx-auto px-8 py-12">
     <!-- Back Button -->
-    <a href="{{ route('dashboard') }}" wire:navigate
-        class="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors mb-8">
-        <flux:icon.arrow-left class="w-4 h-4" />
-        <span class="text-sm">Back</span>
-    </a>
+    <div class="mb-8">
+        <flux:button href="{{ route('dashboard') }}" wire:navigate variant="ghost" icon="arrow-left">
+            Back
+        </flux:button>
+    </div>
 
     <h2 class="text-xl text-[var(--text-primary)] mb-8">All Analyses</h2>
 
@@ -71,10 +71,9 @@ new
             <div class="text-sm text-[var(--text-secondary)] mb-6">
                 Complete your first analysis to see it here
             </div>
-            <a href="{{ route('app.company') }}" wire:navigate
-                class="inline-block px-6 py-3 bg-[#E94B8C] hover:bg-[#D43F7C] text-white rounded-lg transition-colors">
+            <flux:button href="{{ route('app.company') }}" wire:navigate variant="primary">
                 Start New Analysis
-            </a>
+            </flux:button>
         </div>
     @else
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

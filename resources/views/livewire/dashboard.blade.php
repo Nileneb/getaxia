@@ -5,12 +5,11 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use App\Models\Run;
 use App\Models\Company;
-use App\Models\Goal;
 use App\Services\WebhookAiService;
 
 new
     #[Layout('components.layouts.app')]
-    #[Title('Analysis')]
+    #[Title('Dashboard')]
     class extends Component {
     public ?Run $run = null;
     public ?Company $company = null;
@@ -22,13 +21,16 @@ new
     public array $expandedTasks = [];
     public bool $isLoading = true;
     public bool $analysisComplete = false;
+    public bool $needsOnboarding = false;
 
-    public function mount(?string $run = null): void
+    public function mount(): void
     {
         $this->company = auth()->user()->company;
 
+        // Check if user needs onboarding
         if (!$this->company) {
-            $this->redirect(route('app.company'), navigate: true);
+            $this->needsOnboarding = true;
+            $this->isLoading = false;
             return;
         }
 
@@ -41,12 +43,15 @@ new
             'priority' => $g->priority ?? 'mid',
         ])->toArray();
 
-        // Load or create run
-        if ($run) {
-            $this->run = Run::find($run);
-        } else {
-            $this->run = $this->company->runs()->latest()->first();
+        // Check if user has goals
+        if (count($this->goals) === 0) {
+            $this->needsOnboarding = true;
+            $this->isLoading = false;
+            return;
         }
+
+        // Load latest run
+        $this->run = $this->company->runs()->latest()->first();
 
         if ($this->run) {
             $this->loadRunData();
@@ -72,31 +77,9 @@ new
         if ($evaluationsCount > 0) {
             $this->analysisComplete = true;
             $this->loadEvaluations();
-        } else {
-            // Trigger AI analysis
-            $this->startAnalysis();
         }
 
         $this->isLoading = false;
-    }
-
-    public function startAnalysis(): void
-    {
-        if (!$this->run || !$this->company)
-            return;
-
-        try {
-            $service = new WebhookAiService(auth()->user());
-            $result = $service->analyzeTodos($this->run, $this->run->todos, $this->company);
-
-            if ($result['success'] ?? false) {
-                $this->analysisComplete = true;
-                $this->loadEvaluations();
-            }
-        } catch (\Exception $e) {
-            // Mock data for demo purposes if AI fails
-            $this->createMockEvaluations();
-        }
     }
 
     public function loadEvaluations(): void
@@ -124,37 +107,6 @@ new
             $totalScore = array_sum(array_column($this->evaluations, 'score'));
             $this->focusScore = (int) round($totalScore / count($this->evaluations));
         }
-    }
-
-    public function createMockEvaluations(): void
-    {
-        // Create mock evaluations for demo
-        foreach ($this->todos as $index => $todo) {
-            $score = rand(30, 95);
-            $this->evaluations[] = [
-                'id' => uniqid(),
-                'todoId' => $todo['id'],
-                'title' => $todo['text'],
-                'impact' => $this->getImpactLevel($score),
-                'score' => $score,
-                'summary' => 'This task has been analyzed based on your goals and company context.',
-                'reasoning' => [
-                    'Evaluated against your stated priorities',
-                    'Considered timeframe relevance',
-                    'Assessed strategic alignment',
-                ],
-                'relatedGoal' => $this->goals[0]['title'] ?? 'General',
-                'impactRating' => $score >= 70 ? 'High impact' : ($score >= 40 ? 'Medium impact' : 'Low impact'),
-                'delegationFit' => $score >= 70 ? 'Founder-led' : ($score >= 40 ? 'Team lead' : 'Delegate'),
-            ];
-        }
-
-        if (count($this->evaluations) > 0) {
-            $totalScore = array_sum(array_column($this->evaluations, 'score'));
-            $this->focusScore = (int) round($totalScore / count($this->evaluations));
-        }
-
-        $this->analysisComplete = true;
     }
 
     private function getImpactLevel(int $score): string
@@ -203,7 +155,12 @@ new
         return array_filter($this->evaluations, fn($e) => $e['impact'] === $impact);
     }
 
-    public function newAnalysis(): void
+    public function startNewAnalysis(): void
+    {
+        $this->redirect(route('app.todos'), navigate: true);
+    }
+
+    public function startOnboarding(): void
     {
         $this->redirect(route('app.company'), navigate: true);
     }
@@ -216,17 +173,55 @@ new
             <div
                 class="w-16 h-16 border-4 border-[var(--border-color)] border-t-[var(--accent-pink)] rounded-full animate-spin mb-4">
             </div>
-            <p class="text-[var(--text-secondary)]">Analyzing your tasks...</p>
+            <p class="text-[var(--text-secondary)]">Loading your dashboard...</p>
         </div>
+
+    @elseif($needsOnboarding)
+        <!-- Onboarding CTA -->
+        <div class="flex flex-col items-center justify-center py-20">
+            <div class="text-center max-w-lg">
+                <div
+                    class="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--accent-pink)]/10 flex items-center justify-center">
+                    <flux:icon.sparkles class="w-10 h-10 text-[var(--accent-pink)]" />
+                </div>
+                <flux:heading size="xl" class="mb-4">Welcome to Axia</flux:heading>
+                <p class="text-[var(--text-secondary)] mb-8">
+                    Let's set up your company profile and goals so Axia can help you focus on what matters most.
+                </p>
+                <flux:button wire:click="startOnboarding" variant="primary">
+                    Get Started
+                </flux:button>
+            </div>
+        </div>
+
     @elseif(!$analysisComplete)
         <!-- No Analysis Yet -->
         <div class="flex flex-col items-center justify-center py-20">
-            <p class="text-[var(--text-secondary)] mb-4">No analysis available yet.</p>
-            <flux:button href="{{ route('app.todos') }}" wire:navigate variant="primary">
-                Add To-Dos to Analyze
+            <div class="text-center max-w-lg">
+                <div
+                    class="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--accent-pink)]/10 flex items-center justify-center">
+                    <flux:icon.clipboard-document-list class="w-10 h-10 text-[var(--accent-pink)]" />
+                </div>
+                <flux:heading size="xl" class="mb-4">Ready to Analyze</flux:heading>
+                <p class="text-[var(--text-secondary)] mb-8">
+                    Add your to-dos and let Axia analyze which tasks will have the highest impact on your goals.
+                </p>
+                <flux:button wire:click="startNewAnalysis" variant="primary">
+                    Add To-Dos
+                </flux:button>
+            </div>
+        </div>
+
+    @else
+        <!-- Dashboard Header -->
+        <div class="flex items-center justify-between mb-8">
+            <flux:heading size="xl">Your Focus Dashboard</flux:heading>
+            <flux:button wire:click="startNewAnalysis" variant="primary">
+                <flux:icon.plus class="w-4 h-4 mr-2" />
+                New Analysis
             </flux:button>
         </div>
-    @else
+
         <!-- TOP COMPONENT - 3 Columns -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             <!-- Left: Company Info -->
@@ -251,7 +246,7 @@ new
             <!-- Center: Focus Score -->
             <div class="flex flex-col items-center justify-center">
                 <div class="w-40 h-40 rounded-full flex items-center justify-center mb-4"
-                    style="border: 6px solid {{ $this->getScoreColor() }}30; background-color: {{ $this->getScoreColor() }}05;">
+                    style="border: 6px solid color-mix(in srgb, {{ $this->getScoreColor() }} 30%, transparent); background-color: color-mix(in srgb, {{ $this->getScoreColor() }} 5%, transparent);">
                     <div class="text-center">
                         <div class="text-5xl text-[var(--text-primary)] mb-1">{{ $focusScore }}</div>
                         <div class="text-xs text-[var(--text-secondary)]">/100</div>
@@ -292,9 +287,6 @@ new
                         priorities and focusing on tasks that directly support your key objectives.
                     @endif
                 </p>
-                <p>
-                    The analysis below shows which tasks deserve your immediate attention and which can wait.
-                </p>
             </div>
         </div>
 
@@ -321,7 +313,7 @@ new
                                             <div class="text-[var(--text-primary)] text-sm">{{ $task['title'] }}</div>
                                         </div>
                                         <span class="px-3 py-1 rounded-lg text-xs border"
-                                            style="background-color: {{ $this->getImpactColor($task['impact']) }}10; color: {{ $this->getImpactColor($task['impact']) }}; border-color: {{ $this->getImpactColor($task['impact']) }}30;">
+                                            style="background-color: color-mix(in srgb, {{ $this->getImpactColor($task['impact']) }} 10%, transparent); color: {{ $this->getImpactColor($task['impact']) }}; border-color: color-mix(in srgb, {{ $this->getImpactColor($task['impact']) }} 30%, transparent);">
                                             {{ ucfirst($task['impact']) }}
                                         </span>
                                         <span
@@ -388,8 +380,7 @@ new
             <p class="text-[var(--text-secondary)] mb-6">
                 Axia uses a weighted formula that compares your task list against your stated goals, company context,
                 and timeframe. Tasks are scored based on their direct contribution to high-priority objectives,
-                potential
-                revenue impact, and urgency within your current period.
+                potential revenue impact, and urgency within your current period.
             </p>
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs text-[var(--text-secondary)]">Context used:</span>

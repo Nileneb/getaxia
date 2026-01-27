@@ -95,23 +95,16 @@ new
         <form wire:submit="save" class="space-y-8">
             <!-- Domain Fetch Section -->
             <div class="space-y-4">
-                <label class="block text-sm text-[var(--text-primary)]">Domain</label>
-                <div class="flex gap-3">
-                    <div class="flex-1 relative">
-                        <flux:icon.globe-alt
-                            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
-                        <input type="text" wire:model="domain" placeholder="acme.com"
-                            class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg pl-10 pr-4 py-3 text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#E94B8C]/50" />
+                <div class="flex gap-3 items-end">
+                    <div class="flex-1">
+                        <flux:input wire:model="domain" :label="__('Domain')" placeholder="acme.com" icon="globe-alt" />
                     </div>
-                    <button type="button" wire:click="fetchDomain" wire:loading.attr="disabled"
-                        wire:target="fetchDomain"
-                        class="px-6 py-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)] transition-colors disabled:opacity-50">
-                        <span wire:loading.remove wire:target="fetchDomain">Fetch Company Data</span>
-                        <span wire:loading wire:target="fetchDomain">Fetching...</span>
-                    </button>
+                    <flux:button wire:click="fetchDomain" variant="outline">
+                        Fetch Company Data
+                    </flux:button>
                 </div>
                 @if($fetched)
-                    <p class="text-sm text-[var(--accent-green)]">✓ Data found. Review below.</p>
+                    <flux:text class="text-green-500">✓ Data found. Review below.</flux:text>
                 @endif
             </div>
 
@@ -119,72 +112,40 @@ new
 
             <!-- Manual Inputs -->
             <div class="space-y-6">
-                <div>
-                    <label class="block text-sm text-[var(--text-primary)] mb-2">Company Name</label>
-                    <input type="text" wire:model="name" placeholder="Enter company name"
-                        class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#E94B8C]/50" />
-                    @error('name') <span class="text-sm text-red-500">{{ $message }}</span> @enderror
-                </div>
+                <flux:input wire:model="name" :label="__('Company Name')" placeholder="Enter company name" required />
 
-                <div>
-                    <label class="block text-sm text-[var(--text-primary)] mb-2">Business Model</label>
-                    <select wire:model="businessModel"
-                        class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-primary)] focus:outline-none focus:border-[#E94B8C]/50">
-                        <option value="">Select business model</option>
-                        <option value="SaaS">SaaS</option>
-                        <option value="Marketplace">Marketplace</option>
-                        <option value="E-Commerce">E-Commerce</option>
-                        <option value="Services">Services</option>
-                        <option value="Other">Other</option>
-                    </select>
-                    @error('businessModel') <span class="text-sm text-red-500">{{ $message }}</span> @enderror
-                </div>
+                <flux:select wire:model="businessModel" :label="__('Business Model')"
+                    placeholder="Select business model">
+                    <flux:select.option value="SaaS">SaaS</flux:select.option>
+                    <flux:select.option value="Marketplace">Marketplace</flux:select.option>
+                    <flux:select.option value="E-Commerce">E-Commerce</flux:select.option>
+                    <flux:select.option value="Services">Services</flux:select.option>
+                    <flux:select.option value="Other">Other</flux:select.option>
+                </flux:select>
 
-                <div>
-                    <label class="block text-sm text-[var(--text-primary)] mb-2">Stage</label>
-                    <select wire:model="stage"
-                        class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-primary)] focus:outline-none focus:border-[#E94B8C]/50">
-                        <option value="">Select stage</option>
-                        <option value="Pre-PMF">Pre-PMF</option>
-                        <option value="PMF">PMF</option>
-                        <option value="Scale">Scale</option>
-                    </select>
-                    @error('stage') <span class="text-sm text-red-500">{{ $message }}</span> @enderror
-                </div>
+                <flux:select wire:model="stage" :label="__('Stage')" placeholder="Select stage">
+                    <flux:select.option value="Pre-PMF">Pre-PMF</flux:select.option>
+                    <flux:select.option value="PMF">PMF</flux:select.option>
+                    <flux:select.option value="Scale">Scale</flux:select.option>
+                </flux:select>
 
-                <div>
-                    <label class="block text-sm text-[var(--text-primary)] mb-2">Team Size</label>
-                    <input type="text" wire:model="teamSize" placeholder="e.g. 5-10"
-                        class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#E94B8C]/50" />
-                    @error('teamSize') <span class="text-sm text-red-500">{{ $message }}</span> @enderror
-                </div>
+                <flux:input wire:model="teamSize" :label="__('Team Size')" placeholder="e.g. 5-10" required />
 
-                <div>
-                    <label class="block text-sm text-[var(--text-primary)] mb-2">Timeframe</label>
-                    <select wire:model="timeframe"
-                        class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-primary)] focus:outline-none focus:border-[#E94B8C]/50">
-                        <option value="">Select timeframe</option>
-                        <option value="This week">This week</option>
-                        <option value="This month">This month</option>
-                        <option value="This quarter">This quarter</option>
-                    </select>
-                    @error('timeframe') <span class="text-sm text-red-500">{{ $message }}</span> @enderror
-                </div>
+                <flux:select wire:model="timeframe" :label="__('Timeframe')" placeholder="Select timeframe">
+                    <flux:select.option value="This week">This week</flux:select.option>
+                    <flux:select.option value="This month">This month</flux:select.option>
+                    <flux:select.option value="This quarter">This quarter</flux:select.option>
+                </flux:select>
 
-                <div>
-                    <label class="block text-sm text-[var(--text-primary)] mb-2">Additional Information</label>
-                    <textarea wire:model="additionalInfo" placeholder="Any additional context..." rows="4"
-                        class="w-full bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#E94B8C]/50 resize-none"></textarea>
-                </div>
+                <flux:textarea wire:model="additionalInfo" :label="__('Additional Information')"
+                    placeholder="Any additional context..." rows="4" />
             </div>
 
             <!-- Next Button -->
             <div class="flex justify-end pt-4">
-                <button type="submit" wire:loading.attr="disabled"
-                    class="px-8 py-3 bg-[#E94B8C] hover:bg-[#D43F7C] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span wire:loading.remove>Continue to Goals</span>
-                    <span wire:loading>Saving...</span>
-                </button>
+                <flux:button type="submit" variant="primary">
+                    Continue to Goals
+                </flux:button>
             </div>
         </form>
     </div>

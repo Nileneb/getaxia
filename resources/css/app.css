@@ -33,37 +33,61 @@
     --color-axia-green: #4CAF50;
     --color-axia-yellow: #FFB74D;
     --color-axia-orange: #FF8A65;
+
+    /* Axia Background Colors */
+    --color-axia-bg-primary: #181A1C;
+    --color-axia-bg-secondary: #1F2123;
+    --color-axia-bg-tertiary: #232528;
+    --color-axia-bg-hover: #25272A;
+
+    /* Axia Text Colors */
+    --color-axia-text-primary: #FFFFFF;
+    --color-axia-text-secondary: #A0A0A0;
+
+    /* Axia Border Color */
+    --color-axia-border: #2C2F33;
+
+    /* Light Mode Variants */
+    --color-axia-bg-primary-light: #FFFFFF;
+    --color-axia-bg-secondary-light: #FAFAFA;
+    --color-axia-bg-tertiary-light: #F5F5F5;
+    --color-axia-bg-hover-light: #EFEFEF;
+    --color-axia-text-primary-light: #0A0A0A;
+    --color-axia-text-secondary-light: #737373;
+    --color-axia-border-light: #E5E5E5;
 }
 
 @layer base {
-    /* Axia Design System - Dark Mode (Default) */
+    /* Axia Design System - Light Mode (Default) */
     :root {
-        --bg-primary: #181A1C;
-        --bg-secondary: #1F2123;
-        --bg-tertiary: #232528;
-        --bg-hover: #25272A;
-        --border-color: #2C2F33;
-        --text-primary: #FFFFFF;
-        --text-secondary: #A0A0A0;
-        --accent-pink: #E94B8C;
-        --accent-green: #4CAF50;
-        --accent-yellow: #FFB74D;
-        --accent-orange: #FF8A65;
+        --bg-primary: var(--color-axia-bg-primary-light);
+        --bg-secondary: var(--color-axia-bg-secondary-light);
+        --bg-tertiary: var(--color-axia-bg-tertiary-light);
+        --bg-hover: var(--color-axia-bg-hover-light);
+        --border-color: var(--color-axia-border-light);
+        --text-primary: var(--color-axia-text-primary-light);
+        --text-secondary: var(--color-axia-text-secondary-light);
+        --accent-pink: var(--color-axia-pink);
+        --accent-pink-hover: var(--color-axia-pink-hover);
+        --accent-green: var(--color-axia-green);
+        --accent-yellow: var(--color-axia-yellow);
+        --accent-orange: var(--color-axia-orange);
     }
 
-    /* Axia Design System - Light Mode */
-    :root.light, .light {
-        --bg-primary: #FFFFFF;
-        --bg-secondary: #FAFAFA;
-        --bg-tertiary: #F5F5F5;
-        --bg-hover: #EFEFEF;
-        --border-color: #E5E5E5;
-        --text-primary: #0A0A0A;
-        --text-secondary: #737373;
-        --accent-pink: #E94B8C;
-        --accent-green: #4CAF50;
-        --accent-yellow: #FFB74D;
-        --accent-orange: #FF8A65;
+    /* Axia Design System - Dark Mode */
+    :root.dark, .dark {
+        --bg-primary: var(--color-axia-bg-primary);
+        --bg-secondary: var(--color-axia-bg-secondary);
+        --bg-tertiary: var(--color-axia-bg-tertiary);
+        --bg-hover: var(--color-axia-bg-hover);
+        --border-color: var(--color-axia-border);
+        --text-primary: var(--color-axia-text-primary);
+        --text-secondary: var(--color-axia-text-secondary);
+        --accent-pink: var(--color-axia-pink);
+        --accent-pink-hover: var(--color-axia-pink-hover);
+        --accent-green: var(--color-axia-green);
+        --accent-yellow: var(--color-axia-yellow);
+        --accent-orange: var(--color-axia-orange);
     }
 
     body {
@@ -74,10 +98,82 @@
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: var(--color-axia-pink);
+        --color-accent-content: var(--color-axia-pink);
+        --color-accent-foreground: var(--color-axia-text-primary);
     }
+
+    :root {
+        --color-accent: var(--color-axia-pink);
+        --color-accent-content: var(--color-axia-pink);
+        --color-accent-foreground: var(--color-axia-text-primary);
+    }
+}
+
+/* Axia Primary Button Styles - Override Flux primary variant */
+[data-flux-button] {
+    --color-accent: var(--color-axia-pink) !important;
+    --color-accent-content: var(--color-axia-pink) !important;
+    --color-accent-foreground: #FFFFFF !important;
+}
+
+/* Primary button background */
+button[data-flux-button]:not([data-flux-button-variant="outline"]):not([data-flux-button-variant="ghost"]):not([data-flux-button-variant="subtle"]) {
+    background-color: var(--color-axia-pink) !important;
+    color: #FFFFFF !important;
+}
+
+button[data-flux-button]:not([data-flux-button-variant="outline"]):not([data-flux-button-variant="ghost"]):not([data-flux-button-variant="subtle"]):hover {
+    background-color: var(--color-axia-pink-hover) !important;
+}
+
+/* Outline button styles */
+button[data-flux-button][data-flux-button-variant="outline"],
+a[data-flux-button][data-flux-button-variant="outline"] {
+    border-color: var(--color-axia-pink) !important;
+    color: var(--color-axia-pink) !important;
+    background-color: transparent !important;
+}
+
+button[data-flux-button][data-flux-button-variant="outline"]:hover,
+a[data-flux-button][data-flux-button-variant="outline"]:hover {
+    background-color: var(--color-axia-pink) !important;
+    color: #FFFFFF !important;
+}
+
+/* Ghost button styles */
+button[data-flux-button][data-flux-button-variant="ghost"],
+a[data-flux-button][data-flux-button-variant="ghost"] {
+    color: var(--color-axia-pink) !important;
+    background-color: transparent !important;
+}
+
+button[data-flux-button][data-flux-button-variant="ghost"]:hover,
+a[data-flux-button][data-flux-button-variant="ghost"]:hover {
+    background-color: var(--color-axia-pink) !important;
+    color: #FFFFFF !important;
+}
+
+/* Subtle button styles */
+button[data-flux-button][data-flux-button-variant="subtle"],
+a[data-flux-button][data-flux-button-variant="subtle"] {
+    color: var(--color-axia-pink) !important;
+}
+
+button[data-flux-button][data-flux-button-variant="subtle"]:hover,
+a[data-flux-button][data-flux-button-variant="subtle"]:hover {
+    background-color: var(--color-axia-pink) !important;
+    color: #FFFFFF !important;
+}
+
+/* Primary link buttons (with href) */
+a[data-flux-button]:not([data-flux-button-variant]) {
+    background-color: var(--color-axia-pink) !important;
+    color: #FFFFFF !important;
+}
+
+a[data-flux-button]:not([data-flux-button-variant]):hover {
+    background-color: var(--color-axia-pink-hover) !important;
 }
 
 @layer base {

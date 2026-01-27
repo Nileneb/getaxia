@@ -19,8 +19,8 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Dashboard
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    // Dashboard - Main entry point showing latest analysis
+    Volt::route('dashboard', 'dashboard')->name('dashboard');
 
     // Analysis Flow (Main App)
     Route::prefix('app')->name('app.')->group(function () {
