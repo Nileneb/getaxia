@@ -20,7 +20,7 @@ test('two factor settings page can be rendered', function () {
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => time()])
-        ->get(route('two-factor.show'))
+        ->get(route('settings.two-factor'))
         ->assertOk()
         ->assertSee('Two Factor Authentication')
         ->assertSee('Disabled');
@@ -30,7 +30,7 @@ test('two factor settings page requires password confirmation when enabled', fun
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
-        ->get(route('two-factor.show'));
+        ->get(route('settings.two-factor'));
 
     $response->assertRedirect(route('password.confirm'));
 });
@@ -42,7 +42,7 @@ test('two factor settings page returns forbidden response when two factor is dis
 
     $response = $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => time()])
-        ->get(route('two-factor.show'));
+        ->get(route('settings.two-factor'));
 
     $response->assertForbidden();
 });

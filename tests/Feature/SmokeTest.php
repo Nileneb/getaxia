@@ -26,7 +26,7 @@ test('register page loads successfully', function () {
 });
 
 test('onboarding page requires authentication', function () {
-    $response = $this->get('/onboarding');
+    $response = $this->get('/app/company');
 
     $response->assertRedirect('/login');
 });
@@ -34,7 +34,7 @@ test('onboarding page requires authentication', function () {
 test('onboarding page loads for authenticated user', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->get('/onboarding');
+    $response = $this->actingAs($user)->get('/app/company');
 
     $response->assertStatus(200);
 });

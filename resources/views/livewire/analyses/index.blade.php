@@ -5,9 +5,10 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use App\Models\Run;
 
+new
 #[Layout('components.layouts.app')]
 #[Title('Past Analyses')]
-new class extends Component {
+class extends Component {
     public array $analyses = [];
 
     public function mount(): void
