@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     // Set Langdock config for tests
+    // base_url is just the host, region is separate (URL becomes: base_url/openai/region/v1/chat/completions)
     config([
         'services.langdock.api_key' => 'test-api-key',
-        'services.langdock.base_url' => 'https://api.langdock.test/v1',
+        'services.langdock.base_url' => 'https://api.langdock.test',
+        'services.langdock.region' => 'eu',
         'services.langdock.model' => 'gpt-4o',
     ]);
 
@@ -60,7 +62,7 @@ test('langdock service sends correct request headers', function () {
     Http::assertSent(function ($request) {
         return $request->hasHeader('Authorization', 'Bearer test-api-key')
             && $request->hasHeader('Content-Type', 'application/json')
-            && str_contains($request->url(), 'api.langdock.test');
+            && str_contains($request->url(), 'api.langdock.test/openai/eu/v1/chat/completions');
     });
 });
 
@@ -93,7 +95,9 @@ test('langdock service sends correct request body', function () {
             && isset($body['messages'])
             && count($body['messages']) === 2
             && $body['messages'][0]['role'] === 'system'
-            && $body['messages'][1]['role'] === 'user';
+            && $body['messages'][1]['role'] === 'user'
+            && isset($body['response_format'])
+            && $body['response_format']['type'] === 'json_object';
     });
 });
 
@@ -181,7 +185,9 @@ test('langdock service throws exception on api error', function () {
     $run = Run::create(['company_id' => $company->id, 'user_id' => $user->id]);
     $todo = Todo::create(['run_id' => $run->id, 'raw_input' => 'Test', 'normalized_title' => 'Test']);
 
+    // Disable retries for test speed
     $service = new WebhookAiService($user);
+    $service->setMaxRetries(1);
 
     expect(fn () => $service->analyzeTodos($run, collect([$todo]), $company))
         ->toThrow(\Exception::class);

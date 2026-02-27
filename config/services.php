@@ -37,8 +37,9 @@ return [
 
     'langdock' => [
         'api_key' => env('LANGDOCK_API_KEY'),
-        'base_url' => env('LANGDOCK_BASE_URL', 'https://api.langdock.com/api/v1'),
-        'model' => env('LANGDOCK_MODEL', 'gpt-5'),
+        'base_url' => env('LANGDOCK_BASE_URL', 'https://api.langdock.com'),
+        'region' => env('LANGDOCK_REGION', 'eu'),
+        'model' => env('LANGDOCK_MODEL', 'gpt-4o'),
     ],
 
 ];

@@ -89,14 +89,18 @@ class ChatController extends Controller
     {
         // Get Langdock configuration from config/services.php
         $apiKey = config('services.langdock.api_key');
-        $baseUrl = config('services.langdock.base_url');
+        $baseUrl = rtrim(config('services.langdock.base_url'), '/');
+        $region = config('services.langdock.region', 'eu');
         $model = config('services.langdock.model');
 
         if (empty($apiKey) || empty($baseUrl)) {
             throw new \Exception('Langdock API credentials not configured');
         }
 
-        return new StreamedResponse(function () use ($session, $message, $apiKey, $baseUrl, $model) {
+        // Build Langdock OpenAI-compatible URL
+        $apiUrl = "{$baseUrl}/openai/{$region}/v1/chat/completions";
+
+        return new StreamedResponse(function () use ($session, $message, $apiKey, $apiUrl, $model) {
             try {
                 // Build OpenAI-compatible messages
                 $systemMessage = 'You are a helpful AI assistant for startup founders. Provide concise, actionable advice.';
@@ -116,19 +120,21 @@ class ChatController extends Controller
                     'user_id' => $session->user_id,
                     'session_id' => $session->session_id,
                     'model' => $model,
+                    'url' => $apiUrl,
                 ]);
 
-                // Non-streaming request first (as per requirement)
+                // Use streaming from Langdock API for real-time response
                 $response = Http::timeout(120)
                     ->withHeaders([
                         'Authorization' => "Bearer {$apiKey}",
                         'Content-Type' => 'application/json',
                     ])
-                    ->post("{$baseUrl}/chat/completions", [
+                    ->post($apiUrl, [
                         'model' => $model,
                         'messages' => $messages,
                         'temperature' => 0.7,
                         'max_tokens' => 2000,
+                        'stream' => true,
                     ]);
 
                 Log::channel('stack')->info('Chat response received from Langdock', [
@@ -137,19 +143,51 @@ class ChatController extends Controller
                     'status' => $response->status(),
                 ]);
 
-                // Parse OpenAI-compatible response
+                // Parse streaming OpenAI-compatible response
                 if ($response->successful()) {
-                    $data = $response->json();
+                    $body = $response->body();
 
-                    // Extract content from OpenAI format
-                    $content = $data['choices'][0]['message']['content'] ?? '';
-                    $tokensUsed = $data['usage']['total_tokens'] ?? null;
+                    // Handle SSE stream chunks
+                    $fullContent = '';
+                    $lines = explode("\n", $body);
 
+                    foreach ($lines as $line) {
+                        $line = trim($line);
+                        if (empty($line) || !str_starts_with($line, 'data: ')) {
+                            continue;
+                        }
+
+                        $jsonStr = substr($line, 6); // Remove "data: " prefix
+                        if ($jsonStr === '[DONE]') {
+                            break;
+                        }
+
+                        $chunk = json_decode($jsonStr, true);
+                        if (!$chunk || !isset($chunk['choices'][0]['delta']['content'])) {
+                            continue;
+                        }
+
+                        $delta = $chunk['choices'][0]['delta']['content'];
+                        $fullContent .= $delta;
+
+                        // Stream each chunk to client
+                        echo "data: " . json_encode([
+                            'type' => 'delta',
+                            'sessionId' => $session->session_id,
+                            'content' => $delta,
+                        ]) . "\n\n";
+
+                        if (ob_get_level()) {
+                            ob_flush();
+                        }
+                        flush();
+                    }
+
+                    // Send final complete message
                     echo "data: " . json_encode([
                         'type' => 'message',
                         'sessionId' => $session->session_id,
-                        'content' => $content,
-                        'tokens' => $tokensUsed,
+                        'content' => $fullContent,
                     ]) . "\n\n";
                 } else {
                     throw new \Exception('Langdock API returned status ' . $response->status());

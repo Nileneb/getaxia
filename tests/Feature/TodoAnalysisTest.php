@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     // Set Langdock config for tests
+    // base_url is just the host, region is separate (URL becomes: base_url/openai/region/v1/chat/completions)
     config([
         'services.langdock.api_key' => 'test-api-key',
-        'services.langdock.base_url' => 'https://api.langdock.test/v1',
+        'services.langdock.base_url' => 'https://api.langdock.test',
+        'services.langdock.region' => 'eu',
         'services.langdock.model' => 'gpt-4o',
     ]);
 

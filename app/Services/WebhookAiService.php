@@ -15,14 +15,21 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * WebhookAiService - Routes all AI requests through Langdock API
- * Replaces n8n webhook-based architecture with direct OpenAI-compatible Langdock API
+ * Uses OpenAI-compatible endpoint: POST /openai/{region}/v1/chat/completions
+ * See: https://docs.langdock.com/api-endpoints/completion/openai
  */
 class WebhookAiService
 {
     protected ?string $apiKey;
     protected ?string $baseUrl;
+    protected ?string $region;
     protected ?string $model;
     protected ?\App\Models\User $user;
+
+    /**
+     * Maximum retries for rate-limited (429) requests
+     */
+    protected int $maxRetries = 3;
 
     public function __construct(?\App\Models\User $user = null)
     {
@@ -30,12 +37,31 @@ class WebhookAiService
 
         // Get Langdock configuration from config/services.php
         $this->apiKey = config('services.langdock.api_key');
-        $this->baseUrl = config('services.langdock.base_url');
+        $this->baseUrl = rtrim(config('services.langdock.base_url'), '/');
+        $this->region = config('services.langdock.region', 'eu');
         $this->model = config('services.langdock.model');
 
         if (empty($this->apiKey) || empty($this->baseUrl)) {
             throw new \Exception('Langdock API credentials not configured');
         }
+    }
+
+    /**
+     * Set maximum retry count (useful for testing)
+     */
+    public function setMaxRetries(int $retries): self
+    {
+        $this->maxRetries = $retries;
+        return $this;
+    }
+
+    /**
+     * Build the full Langdock OpenAI-compatible API URL
+     * Format: {baseUrl}/openai/{region}/v1/chat/completions
+     */
+    protected function getApiUrl(): string
+    {
+        return "{$this->baseUrl}/openai/{$this->region}/v1/chat/completions";
     }
 
     /**
@@ -187,68 +213,108 @@ class WebhookAiService
 
     /**
      * Call Langdock API (OpenAI-compatible) for AI processing
+     * Endpoint: POST /openai/{region}/v1/chat/completions
+     * Supports JSON mode via response_format for structured outputs
+     * Implements retry logic for rate limiting (429)
      */
     protected function callWebhook(array $payload): array
     {
-        try {
-            Log::info('WebhookAiService: Calling Langdock API', [
-                'task' => $payload['task'] ?? 'unknown',
-                'model' => $this->model,
-            ]);
+        $attempt = 0;
 
-            // Build OpenAI-compatible messages format
-            $messages = [
-                [
-                    'role' => 'system',
-                    'content' => $payload['system_message'] ?? 'You are a helpful assistant.',
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $payload['user_prompt'] ?? '',
-                ],
-            ];
+        while ($attempt < $this->maxRetries) {
+            $attempt++;
 
-            // Call Langdock API with OpenAI-compatible endpoint
-            $response = Http::timeout(120)
-                ->withHeaders([
-                    'Authorization' => "Bearer {$this->apiKey}",
-                    'Content-Type' => 'application/json',
-                ])
-                ->post("{$this->baseUrl}/chat/completions", [
+            try {
+                Log::info('WebhookAiService: Calling Langdock API', [
+                    'task' => $payload['task'] ?? 'unknown',
+                    'model' => $this->model,
+                    'region' => $this->region,
+                    'attempt' => $attempt,
+                ]);
+
+                // Build OpenAI-compatible messages format
+                $messages = [
+                    [
+                        'role' => 'system',
+                        'content' => $payload['system_message'] ?? 'You are a helpful assistant.',
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $payload['user_prompt'] ?? '',
+                    ],
+                ];
+
+                // Build request body
+                $requestBody = [
                     'model' => $this->model,
                     'messages' => $messages,
                     'temperature' => $payload['temperature'] ?? 0.7,
-                    'max_tokens' => 4000,
-                ]);
+                    'max_tokens' => $payload['max_tokens'] ?? 4000,
+                ];
 
-            if ($response->failed()) {
-                Log::error('WebhookAiService: Langdock API call failed', [
+                // Enable JSON mode for structured response tasks
+                // This guarantees valid JSON output from the model
+                $structuredTasks = ['todo_analysis', 'company_extraction', 'goals_extraction'];
+                if (in_array($payload['task'] ?? '', $structuredTasks)) {
+                    $requestBody['response_format'] = ['type' => 'json_object'];
+                }
+
+                // Call Langdock API with the correct OpenAI-compatible endpoint
+                $response = Http::timeout(120)
+                    ->withHeaders([
+                        'Authorization' => "Bearer {$this->apiKey}",
+                        'Content-Type' => 'application/json',
+                    ])
+                    ->post($this->getApiUrl(), $requestBody);
+
+                // Handle rate limiting with exponential backoff
+                if ($response->status() === 429) {
+                    $retryAfter = (int) ($response->header('Retry-After') ?? (2 ** $attempt));
+                    Log::warning('WebhookAiService: Rate limited (429), retrying', [
+                        'attempt' => $attempt,
+                        'retry_after' => $retryAfter,
+                    ]);
+
+                    if ($attempt < $this->maxRetries) {
+                        sleep(min($retryAfter, 30));
+                        continue;
+                    }
+
+                    return [
+                        'success' => false,
+                        'error' => 'Rate limited after ' . $this->maxRetries . ' retries',
+                    ];
+                }
+
+                if ($response->failed()) {
+                    Log::error('WebhookAiService: Langdock API call failed', [
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                        'url' => $this->getApiUrl(),
+                    ]);
+
+                    return [
+                        'success' => false,
+                        'error' => 'Langdock API returned status ' . $response->status() . ': ' . $response->body(),
+                    ];
+                }
+
+                $data = $response->json();
+
+                Log::info('WebhookAiService: Langdock API response received', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'usage' => $data['usage'] ?? null,
                 ]);
 
-                return [
-                    'success' => false,
-                    'error' => 'Langdock API returned status ' . $response->status() . ': ' . $response->body(),
-                ];
-            }
+                // Parse the content from the OpenAI-compatible response
+                if (!isset($data['choices'][0]['message']['content'])) {
+                    Log::error('WebhookAiService: Invalid Langdock response format', ['response' => $data]);
 
-            $data = $response->json();
-
-            Log::info('WebhookAiService: Langdock API response received', [
-                'status' => $response->status(),
-                'usage' => $data['usage'] ?? null,
-            ]);
-
-            // Parse the content from the OpenAI-compatible response
-            if (!isset($data['choices'][0]['message']['content'])) {
-                Log::error('WebhookAiService: Invalid Langdock response format', ['response' => $data]);
-
-                return [
-                    'success' => false,
-                    'error' => 'Invalid Langdock API response format',
-                ];
-            }
+                    return [
+                        'success' => false,
+                        'error' => 'Invalid Langdock API response format',
+                    ];
+                }
 
             $content = $data['choices'][0]['message']['content'];
             $tokensUsed = $data['usage']['total_tokens'] ?? 0;
@@ -274,17 +340,29 @@ class WebhookAiService
                 'tokens_used' => $tokensUsed,
             ];
 
-        } catch (\Exception $e) {
-            Log::error('WebhookAiService: Exception during Langdock API call', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            } catch (\Exception $e) {
+                Log::error('WebhookAiService: Exception during Langdock API call', [
+                    'message' => $e->getMessage(),
+                    'attempt' => $attempt,
+                ]);
 
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
+                // Only return error on last attempt
+                if ($attempt >= $this->maxRetries) {
+                    return [
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                    ];
+                }
+
+                // Wait before retrying on exception
+                sleep(2 ** $attempt);
+            }
         }
+
+        return [
+            'success' => false,
+            'error' => 'Max retries exceeded',
+        ];
     }
 
     /**
@@ -508,6 +586,7 @@ class WebhookAiService
 
     /**
      * Send a chat message via Langdock API and get AI response
+     * Uses: POST /openai/{region}/v1/chat/completions
      */
     public function sendChatMessage(string $message, ?Company $company = null): array
     {
@@ -540,7 +619,7 @@ class WebhookAiService
                     'Authorization' => "Bearer {$this->apiKey}",
                     'Content-Type' => 'application/json',
                 ])
-                ->post("{$this->baseUrl}/chat/completions", [
+                ->post($this->getApiUrl(), [
                     'model' => $this->model,
                     'messages' => [
                         [
@@ -567,19 +646,19 @@ class WebhookAiService
             $aiMessage = $data['choices'][0]['message']['content'] ?? 'No response from AI';
             $tokensUsed = $data['usage']['total_tokens'] ?? null;
 
-            // Log the interaction
+            // Log the interaction using correct AiLog columns
             AiLog::create([
                 'run_id' => null,
                 'prompt_type' => 'chat',
-                'prompt_version' => 'v1.0',
-                'request_payload' => [
+                'system_prompt_id' => null,
+                'input_context' => [
                     'message' => $message,
                     'company_id' => $company?->id,
                 ],
-                'response_payload' => $data,
+                'response' => $data,
                 'tokens_used' => $tokensUsed,
-                'response_time_ms' => $duration,
-                'status' => 'success',
+                'duration_ms' => (int) round($duration),
+                'success' => true,
             ]);
 
             return [
@@ -591,6 +670,7 @@ class WebhookAiService
             Log::error('Chat API call failed', [
                 'error' => $e->getMessage(),
                 'model' => $this->model,
+                'url' => $this->getApiUrl(),
             ]);
 
             throw new \Exception('Failed to send chat message: ' . $e->getMessage());
