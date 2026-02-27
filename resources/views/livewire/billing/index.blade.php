@@ -63,7 +63,8 @@ new class extends Component {
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             {{-- Current Plan Card --}}
-            <flux:card class="space-y-4">
+            <div
+                class="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
                 <flux:heading size="lg">{{ __('Current Plan') }}</flux:heading>
 
                 @if($isSubscribed)
@@ -107,11 +108,12 @@ new class extends Component {
                         </flux:text>
                     </div>
                 @endif
-            </flux:card>
+            </div>
 
             {{-- Subscribe Card (only shown when not subscribed) --}}
             @unless($isSubscribed)
-                <flux:card class="space-y-4">
+                <div
+                    class="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
                     <flux:heading size="lg">{{ __('Axia Pro') }}</flux:heading>
 
                     <div class="space-y-3">
@@ -155,7 +157,7 @@ new class extends Component {
                             </flux:button>
                         </form>
                     </div>
-                </flux:card>
+                </div>
             @endunless
         </div>
     </flux:main>
