@@ -1,12 +1,17 @@
 <?php
 
 use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 
-new class extends Component {
+new
+    #[Layout('components.layouts.app')]
+    #[Title('Checkout Cancelled')]
+    class extends Component {
     //
 }; ?>
 
-<x-layouts.app title="{{ __('Checkout Cancelled') }}">
+<div>
     <flux:main class="space-y-6">
         <div class="max-w-lg mx-auto text-center space-y-6 py-12">
             <div class="flex justify-center">
@@ -29,4 +34,4 @@ new class extends Component {
             </div>
         </div>
     </flux:main>
-</x-layouts.app>
+</div>

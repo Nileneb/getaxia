@@ -1,9 +1,14 @@
 <?php
 
 use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 
-new class extends Component {
+new
+    #[Layout('components.layouts.app')]
+    #[Title('Billing')]
+    class extends Component {
     public bool $isSubscribed = false;
     public bool $onTrial = false;
     public bool $isCancelled = false;
@@ -30,7 +35,7 @@ new class extends Component {
     }
 }; ?>
 
-<x-layouts.app title="{{ __('Billing') }}">
+<div>
     <flux:main class="space-y-6">
         <div class="flex items-center justify-between">
             <div>
@@ -161,4 +166,4 @@ new class extends Component {
             @endunless
         </div>
     </flux:main>
-</x-layouts.app>
+</div>
