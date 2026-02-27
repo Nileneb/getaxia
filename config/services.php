@@ -42,4 +42,9 @@ return [
         'model' => env('LANGDOCK_MODEL', 'gpt-4o'),
     ],
 
+    'stripe' => [
+        'basic_price_id' => env('STRIPE_BASIC_PRICE_ID'),
+        'trial_days' => env('STRIPE_TRIAL_DAYS', 14),
+    ],
+
 ];

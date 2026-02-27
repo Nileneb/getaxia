@@ -4,12 +4,12 @@ namespace App\Services;
 
 use App\Models\AiLog;
 use App\Models\Company;
-use App\Models\Goal;
 use App\Models\GoalKpi;
 use App\Models\Run;
 use App\Models\SystemPrompt;
 use App\Services\AiResponseValidator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -33,7 +33,8 @@ class WebhookAiService
 
     public function __construct(?\App\Models\User $user = null)
     {
-        $this->user = $user ?? auth()->user();
+        /** @var \App\Models\User|null */
+        $this->user = $user ?? Auth::user();
 
         // Get Langdock configuration from config/services.php
         $this->apiKey = config('services.langdock.api_key');
@@ -260,6 +261,7 @@ class WebhookAiService
                 }
 
                 // Call Langdock API with the correct OpenAI-compatible endpoint
+                /** @var \Illuminate\Http\Client\Response $response */
                 $response = Http::timeout(120)
                     ->withHeaders([
                         'Authorization' => "Bearer {$this->apiKey}",
@@ -368,7 +370,7 @@ class WebhookAiService
     /**
      * Build context variables for template replacement
      */
-    protected function buildContextVariables(?Company $company, Collection $goals, ?GoalKpi $topKpi, Collection $todos = null): array
+    protected function buildContextVariables(?Company $company, Collection $goals, ?GoalKpi $topKpi, ?Collection $todos = null): array
     {
         $variables = [
             'company_name' => $company?->name ?? 'Not set',
@@ -614,6 +616,7 @@ class WebhookAiService
         }
 
         try {
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::timeout(60)
                 ->withHeaders([
                     'Authorization' => "Bearer {$this->apiKey}",

@@ -1,0 +1,172 @@
+STRIPE_INTEGRATION_PLAN
+Executive Summary
+This document proposes a step-by-step plan for integrating Stripe-based, fixed-price
+subscription billing (with optional free trials and self-service cancellation) into the
+open-source Laravel project “getaxia”. The repository currently contains no payment
+code and runs on a Laravel 10 code-base backed by MySQL 8.0 according to its
+.env.example github.com .After reviewing Stripe’s official documentation for Sub-
+scriptions, Prices, Trials, Checkout, Customer Portal, Webhooks and Billing Proration
+Subscriptions | Stripe API Reference Cancel subscriptions | Stripe Documentation-
+docs.stripe.com docs.stripe.com docs.stripe.com , Laravel Cashier 16 is found to
+cover all mandatory capabilities—subscriptions, trials, portal integration and webhook
+handling—without any blocking gaps. We therefore recommend using Cashier, sup-
+plemented by Stripe’s official PHP SDK for advanced or future needs, per composer
+commands advised in Stripe’s ecosystem guidance Laravel Cashier (Stripe) - Laravel
+12.x - The PHP Framework For Web Artisans Laravel Cashier - Laravel 5.5 - The PHP
+Framework For Web Artisans GitHub - l4nos/laravel-cashier-stripe-connect: Adds
+Stripe Connect functionality to Laravel's main billing package, Cashier. Simply works
+as a drop-in on top of Cashier, with no extra configuration. .
+The roadmap is divided into five phases:Phase 0 readies tooling, environment variables
+and database migrations; Phase 1 introduces paid recurring subscriptions via Stripe
+Checkout; Phase 2 layers in free-trial logic; Phase 3 enables self-service cancellation
+and broader subscription management through the Stripe Customer Portal; Phase 4
+hardens the solution for production with monitoring, autoscaling, and rollback capabil-
+ities AI Workload Management and Best Practices | Mirantis Deployment Strategies:
+Balancing Reliability, Frequency and Risk .
+Key design decisions include using Stripe Checkout for the initial payment flow because
+it minimizes PCI scope and yields the fastest time-to-market while still supporting
+trials and recurring billing docs.stripe.com . Relying on the Stripe-hosted Customer
+Portal for cancellation and payment-method updates reduces custom UI work and
+automatically handles prorations and regulatory edge cases Add a cancellation page
+to the customer portal | Stripe Documentation Customer self-service with a customer
+portal | Stripe Documentation . Lifecycle events are handled asynchronously via a
+queued /stripe/webhook endpoint, listening to the 13 events listed in the “Webhooks
+you must register” table below GitHub - spatie/laravel-stripe-webhooks: Handle Stripe
+webhooks in a Laravel application .
+Open questions have been flagged as “Decision Needed” for product or business
+stakeholders (e.g., exact trial length, currency, feature gating after cancellation).
+Phase 0 – prerequisites
+Goal: Prepare the code-base, environment, packages, and database for Stripe billing.
+Phase 0 involves installing necessary packages via composer, including Laravel
+Cashier and Stripe PHP SDK, and registering the Cashier service provider if automatic
+package discovery is disabled. The Billable trait must be added to the User model.
+Database migrations will add required columns (stripe_id, pm_type, pm_last_four,
+trial_ends_at) and create subscriptions and subscription_items tables following
+Cashier’s schema. Environment variables related to Stripe credentials and settings are
+appended to .env.example, and a Stripe-specific queue connection is added in queue
+configuration. Finally, a POST route /stripe/webhook is stubbed to handle webhook
+events.
+Verification includes ensuring that database migrations run successfully, creating new
+tables and columns; the user factory can create a Stripe customer; environment
+variables load correctly; and the webhook route responds with 200 OK to a test POST.
+Phase 1 – basic recurring billing
+Goal: Allow authenticated users to start and pay for a subscription (no trial) via Stripe
+Checkout.
+In this phase, a POST route /checkout is created and protected by authentication mid-
+dleware. The CheckoutController’s create() method first ensures the user is registered
+as a Stripe customer, then creates a Stripe Checkout session in subscription mode with
+the configured price ID. Success and cancellation URLs redirect users appropriately.
+The front-end implements a simple “Subscribe” button that posts to /checkout and
+redirects the user to the Stripe Checkout page.
+Webhook handling is extended by overriding handleInvoicePaid and handleInvoice-
+PaymentFailed methods to grant or deny access based on payment status. Tests mock
+the creation of Checkout sessions and verify redirect URLs, using Cashier’s in-memory
+driver. The Stripe secret keys and price ID are configured in the services configuration.
+Verification involves triggering checkout.session.completed events via the Stripe CLI
+to confirm the user’s subscription status, checking database entries, ensuring duplicate
+subscriptions are rejected with a proper error, and conducting a manual end-to-end
+subscription purchase test with a Stripe test card.
+Phase 2 – trials
+Goal: Offer an optional free trial period before the first charge.
+To implement free trials, a trial_days parameter is added per plan configuration,
+pending decision on the actual length. The CheckoutController is updated to pass
+the trial_period_days within subscription_data when creating the Stripe Checkout
+session. The front-end shows a “Start free trial” banner clarifying that billing begins
+after the trial ends.
+A notification system sends alerts three days before trial expiration, triggered by
+the customer.subscription.trial_will_end webhook event. Tests verify trial-related
+emails by simulating subscription creation and trial end events through the Stripe CLI.
+Verification includes simulating trial Checkout sessions, confirming the database
+reflects the trialing status, and ensuring notifications dispatch on upcoming trial
+expiration. After the trial ends, successful payment events activate the subscription.
+Phase 3 – cancellation & portal
+Goal: Provide users a self-service way to cancel, resume, or change payment methods
+via Stripe Customer Portal.
+This phase enables authenticated users to manage their billing through the Stripe Cus-
+tomer Portal. A GET route /billing-portal is added with authentication middleware.
+The PortalController’s redirect() method creates a Stripe Billing Portal session for
+the current user and redirects them to it, specifying a return URL back to the account
+page.
+The account page includes a “Manage billing” button linking to this route. Access to the
+portal link is protected by policies or middleware to ensure only subscription owners
+may use it. Tests verify that cancellations via the portal set the cancel_at_period_end
+flag and that webhook events synchronize subscription end dates locally.
+Verification steps include navigating to the billing portal, performing subscription can-
+cellations and resumptions, and confirming database updates triggered by respective
+webhook events.
+Phase 4 – production hardening
+Goal: Achieve operational reliability, monitoring, and safe rollback for live billing.
+To ensure operational stability, an hourly scheduled command (php artisan
+cashier:run) is configured to synchronize subscription statuses. Kubernetes Horizon-
+tal Pod Autoscaler is set up for the billing worker, auto-scaling based on queue length
+during webhook processing. Logging is centralized as JSON and forwarded to an
+Application Performance Monitoring (APM) system for analysis of latency and errors.
+A blue/green deployment and rollback procedure is documented to support automated
+gates in production. Webhook handling jobs implement Laravel’s ShouldQueue interface
+and run on a dedicated stripe-webhooks queue to allow scaling and fault isolation.
+Tests involve load testing with high volumes of webhook events to verify auto-scaling
+and backlog processing, simulating failure rates triggering automated rollback, and
+confirming scheduled commands update overdue subscriptions appropriately.
+Stripe Checkout vs. Stripe Elements
+A comparison of Stripe Checkout and Stripe Elements integration approaches high-
+lights that Checkout requires only a single API call and redirect, greatly reducing
+integration effort and PCI scope by qualifying for SAQ A compliance since all card data
+is handled by Stripe docs.stripe.com . In contrast, Stripe Elements requires custom
+front-end forms, validation, token handling, and maintains a broader PCI scope of SAQ
+A-EP.
+Checkout supports native trials automatically, whereas Elements requires manual
+trial configuration and UI development. Checkout redirects users offsite temporarily,
+whereas Elements allows a seamless in-app branded experience.
+The recommendation is to adopt Stripe Checkout for the initial launch due to minimal
+engineering effort and reduced compliance exposure.
+Webhooks you must register
+The required Stripe webhook events include customer subscription lifecycle events
+such as created, updated, deleted, paused, resumed, and trial notifications (tri-
+al_will_end), as well as invoice events including upcoming, created, finalized, fi-
+nalization_failed, payment_action_required, payment_failed, and paid. Each event
+triggers appropriate application actions like syncing subscription state, granting or
+revoking access, sending emails, alerting engineering, or prompting user actions.
+All events are handled via the /stripe/webhook endpoint and processed on the
+stripe-webhooks queue.
+.env additions
+# --- Stripe credentials ---
+STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxxxxxxx [GitHub -
+stripe-samples/subscription-use-cases: Create subscriptions with fixed
+prices or usage based billing.](https://github.com/stripe-samples/sub-
+scription-use-cases)
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxx # NEVER commit real
+keys
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxx # From Stripe CLI /
+Dashboard
+VITE_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+# --- Plan price IDs (set in Stripe Dashboard) ---
+BASIC=price_12345 # Example fixed-price plan
+ID [GitHub - stripe-samples/subscription-use-cases: Create subscriptions
+with fixed prices or usage based billing.](https://github.com/stripe-sam-
+ples/subscription-use-cases)
+# --- Cashier / tax ---
+CASHIER_PAYMENT_METHOD_TAXES=true
+Risks & mitigations
+Key risks include payment flow outages or degraded performance during peak load,
+which are mitigated by implementing queue auto-scaling and stress testing high-vol-
+ume webhook bursts AI Workload Management and Best Practices | Mirantis . Fraud-
+ulent activity or chargebacks are addressed by enabling Stripe Radar rules and
+monitoring per Stripe’s managed risk recommendations A guide to payment risk and
+payments risk management | Stripe . Regulatory non-compliance is avoided by relying
+on Stripe’s PCI-DSS Level 1 certification and using Checkout to stay within SAQ A
+scope Payment security and compliance in RFPs: A guide | Stripe .
+To handle Stripe account risk holds or bans, detailed logging, pre-engagement with
+Stripe Risk teams, and alerting for abnormal dispute rates are recommended Life
+After Stripe: Best High-Risk Payment Processing Alternatives . Engineering bandwidth
+overruns are mitigated by leveraging Cashier abstractions and Stripe-hosted UIs to
+minimize custom development effort Laravel Cashier - Laravel 5.5 - The PHP Frame-
+work For Web Artisans .
+Estimated person-days per phase
+Effort sizing requires input from engineering management; estimates should be pro-
+vided before scheduling.
+Open items requiring product / business input
+1. Trial length in days.
+2. Whether to collect a payment method before trial start.
+3. Currency, regional tax rates, and whether to enable automatic tax.
+4. Choice between free or paid tier of Stripe Customer Portal.
+5. Feature-access policy after cancellation (immediate lock vs. end-of-period grace).

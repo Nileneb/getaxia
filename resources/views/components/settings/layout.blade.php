@@ -9,6 +9,8 @@
             @endif
             <flux:navlist.item :href="route('settings.appearance')" wire:navigate>{{ __('Appearance') }}
             </flux:navlist.item>
+            <flux:navlist.item :href="route('billing.index')" wire:navigate>{{ __('Billing') }}
+            </flux:navlist.item>
         </flux:navlist>
     </div>
 

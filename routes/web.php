@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Billing\CheckoutController;
+use App\Http\Controllers\Billing\PortalController;
+use App\Http\Controllers\Billing\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Livewire\Volt\Volt;
@@ -12,6 +15,14 @@ use Livewire\Volt\Volt;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+/*
+|--------------------------------------------------------------------------
+| Stripe Webhook (no auth, no CSRF)
+|--------------------------------------------------------------------------
+*/
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook'])
+    ->name('cashier.webhook');
 
 /*
 |--------------------------------------------------------------------------
@@ -32,6 +43,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Analyses History
     Volt::route('analyses', 'analyses.index')->name('analyses.index');
+
+    // Billing
+    Route::prefix('billing')->name('billing.')->group(function () {
+        Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout');
+        Route::get('/portal', [PortalController::class, 'redirect'])->name('portal');
+        Volt::route('/', 'billing.index')->name('index');
+        Volt::route('/success', 'billing.success')->name('success');
+        Volt::route('/cancel', 'billing.cancel')->name('cancel');
+    });
 
     // Settings
     Route::prefix('settings')->name('settings.')->group(function () {

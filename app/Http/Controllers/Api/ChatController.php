@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AgentSession;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -49,7 +50,7 @@ class ChatController extends Controller
     /**
      * Send a message in existing session.
      */
-    public function message(Request $request): StreamedResponse
+    public function message(Request $request): StreamedResponse|JsonResponse
     {
         $validated = $request->validate([
             'session_id' => 'required|uuid',
@@ -124,6 +125,7 @@ class ChatController extends Controller
                 ]);
 
                 // Use streaming from Langdock API for real-time response
+                /** @var \Illuminate\Http\Client\Response $response */
                 $response = Http::timeout(120)
                     ->withHeaders([
                         'Authorization' => "Bearer {$apiKey}",
