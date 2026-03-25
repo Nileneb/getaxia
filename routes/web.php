@@ -16,6 +16,9 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+Route::view('/impressum', 'legal.impressum')->name('impressum');
+Route::view('/datenschutz', 'legal.datenschutz')->name('datenschutz');
+
 /*
 |--------------------------------------------------------------------------
 | Stripe Webhook (no auth, no CSRF)

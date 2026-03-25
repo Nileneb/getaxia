@@ -151,8 +151,8 @@
             <div class="max-w-6xl mx-auto px-6 flex items-center justify-between text-sm text-[var(--text-secondary)]">
                 <span>© {{ date('Y') }} Axia. All rights reserved.</span>
                 <div class="flex gap-6">
-                    <a href="#" class="hover:text-[var(--text-primary)] transition-colors">Privacy</a>
-                    <a href="#" class="hover:text-[var(--text-primary)] transition-colors">Terms</a>
+                    <a href="{{ route('datenschutz') }}" class="hover:text-[var(--text-primary)] transition-colors">Datenschutz</a>
+                    <a href="{{ route('impressum') }}" class="hover:text-[var(--text-primary)] transition-colors">Impressum</a>
                 </div>
             </div>
         </footer>
